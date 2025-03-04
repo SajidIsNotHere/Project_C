@@ -1,5 +1,3 @@
 # Project C
 
-its a school project...
-
-feel free to use it.
+// what am i gonna put here?
