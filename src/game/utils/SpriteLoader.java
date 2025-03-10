@@ -1,4 +1,6 @@
 package game.utils;
 
-public class SpriteLoader {
+public class SpriteLoader
+{
+    // Coming Soon
 }
