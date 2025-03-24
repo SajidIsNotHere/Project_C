@@ -4,29 +4,39 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.image.ImageObserver;
-import java.awt.image.ImageProducer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Arrays;
+import java.util.*;
 
 public class GameHandler extends JPanel implements Runnable {
     private final int WIDTH = 800, HEIGHT = 600;
+    private final int WORLD_SIZE_WIDTH = (10000 - WIDTH), WORLD_SIZE_HEIGHT = (10000 - 600);
     private Thread gameThread;
     public static boolean running = false;
-    public static boolean nextlevel = false;
-    public static boolean endgame = false;
     private Player player;
     private Enemy enemy;
     private ArrayList<Wall> walls;
     private ArrayList<Block> blocks;
+    private ArrayList<Crack> cracks;
     private long startTime;
     private final int TIME_LIMIT = 100000;
     private boolean showGrid = false;
-    private Image backgroundImage;
+    private Image level1Image;
+    private Image level2Image;
+    private Image level3Image;
+    private Image level4Image;
     private Image jumpscareImage;
-    private Image levelImage;
+
+    private boolean nextLevel2 = false;
+    private boolean nextLevel3 = false;
+    private boolean nextLevel4 = false;
+    private boolean endgame = false;
+
+    Block block1 = new Block(750,750,50,50,"School Secrets");
+    Block block2 = new Block(250,500,50,50,"Come");
+    Block block3 = new Block(600,200,50,50,"Alive");
 
     // every single class will be in their own independent class script
     // next week for more organized workspace
@@ -37,14 +47,26 @@ public class GameHandler extends JPanel implements Runnable {
         requestFocus();
         addKeyListener(new KeyHandler());
 
-        backgroundImage = new ImageIcon(getClass().getResource("/game/images/background.png")).getImage();
-        jumpscareImage = new ImageIcon(getClass().getResource("/game/images/realscaryshi.png")).getImage();
-        levelImage = new ImageIcon(getClass().getResource("/game/images/level.png")).getImage();
+        jumpscareImage = new ImageIcon(getClass().getResource("/game/images/jumpscare.png")).getImage();
+        level1Image = new ImageIcon(getClass().getResource("/game/images/level_1.png")).getImage();
+        level2Image = new ImageIcon(getClass().getResource("/game/images/level_2.png")).getImage();
+        level3Image = new ImageIcon(getClass().getResource("/game/images/level_3.png")).getImage();
+        level4Image = new ImageIcon(getClass().getResource("/game/images/level_4.png")).getImage();
 
         player = new Player(900, 900);
         //enemy = new Enemy(100,100,32,32);
         walls = new ArrayList<>();
         blocks = new ArrayList<>();
+        cracks = new ArrayList<>();
+
+
+
+        // LONG AHH CODE gotta optimize prob next week
+        // yeah for now its like this
+        // id probably make sure that i dont make 1:50 so that i dont have to keep doing calculations in my head
+        // when positioning stuff
+
+        // Level 1
 
         int gridSize = 50;
         int gridWidth = (WIDTH + 200) / gridSize;
@@ -60,11 +82,6 @@ public class GameHandler extends JPanel implements Runnable {
             walls.add(new Wall((gridWidth - 1) * gridSize, y, gridSize, gridSize)); // Right wall
         }
 
-        // LONG AHH CODE gotta optimize prob next week
-        // yeah for now its like this
-        // id probably make sure that i dont make 1:50 so that i dont have to keep doing calculations in my head
-        // when positioning stuff
-
         walls.add(new Wall(150, 350, 200,50));
         walls.add(new Wall(150, 400, 50,350));
         walls.add(new Wall(200, 700, 100,50));
@@ -75,10 +92,79 @@ public class GameHandler extends JPanel implements Runnable {
         walls.add(new Wall(350, 100, 50,150));
         walls.add(new Wall(350, 300, 50,100));
         walls.add(new Wall(400, 100, 300,50));
+        walls.add(new Wall(350, 250, 50,50));
 
-        blocks.add(new Block(700,750,50,50,"LET"));
-        blocks.add(new Block(600,200,50,50,"ME"));
-        blocks.add(new Block(250,600,50,50,"IN"));
+        blocks.add(block1);
+        blocks.add(block2);
+        blocks.add(block3);
+        // Level 2
+
+        walls.add(new Wall(1500, 0, 1050,50));
+        walls.add(new Wall(1500, 50, 50,950));
+        walls.add(new Wall(1500, 950, 1050,50));
+        walls.add(new Wall(2500, 50, 50,950));
+
+        walls.add(new Wall(150 + 1500, 350, 200,50));
+        walls.add(new Wall(150 + 1500, 400, 50,350));
+        walls.add(new Wall(200 + 1500, 700, 100,50));
+        walls.add(new Wall(400 + 1500, 700, 200,50));
+        walls.add(new Wall(550 + 1500, 400, 50,350));
+        walls.add(new Wall(600 + 1500, 400, 150,50));
+        walls.add(new Wall(700 + 1500, 100, 50,300));
+        walls.add(new Wall(350 + 1500, 100, 50,150));
+        walls.add(new Wall(350 + 1500, 300, 50,100));
+        walls.add(new Wall(400 + 1500, 100, 300,50));
+        walls.add(new Wall(150 + 1500, 150, 200,50));
+        walls.add(new Wall(150 + 1500, 150, 50,200));
+
+        // Level 3
+
+        walls.add(new Wall(3500, 0, 1050,50));
+        walls.add(new Wall(3500, 50, 50,950));
+        walls.add(new Wall(3500, 950, 1050,50));
+        walls.add(new Wall(4500, 50, 50,950));
+
+        walls.add(new Wall(100 + 3500, 150, 350,50));
+        walls.add(new Wall(400 + 3500, 100, 350,50));
+        walls.add(new Wall(700 + 3500, 150, 50,350));
+        walls.add(new Wall(450 + 3500, 300, 300,50));
+        walls.add(new Wall(750 + 3500, 450, 150,50));
+        walls.add(new Wall(850 + 3500, 500, 50,150));
+        walls.add(new Wall(100 + 3500, 200, 50,300));
+        walls.add(new Wall(150 + 3500, 450, 300,50));
+        walls.add(new Wall(400 + 3500, 500, 50,100));
+        walls.add(new Wall(200 + 3500, 550, 250,50));
+        walls.add(new Wall(200 + 3500, 600, 50,250));
+        walls.add(new Wall(250 + 3500, 800, 250,50));
+        walls.add(new Wall(450 + 3500, 700, 50,100));
+        walls.add(new Wall(500 + 3500, 700, 250,50));
+        walls.add(new Wall(700 + 3500, 650, 200,50));
+
+        // Level 4
+
+        walls.add(new Wall(5500, 0, 1050,50));
+        walls.add(new Wall(5500, 50, 50,950));
+        walls.add(new Wall(5500, 950, 1050,50));
+        walls.add(new Wall(6500, 50, 50,950));
+
+        walls.add(new Wall(100 + 5500, 150, 350,50));
+        walls.add(new Wall(400 + 5500, 100, 350,50));
+        walls.add(new Wall(700 + 5500, 150, 50,350));
+        walls.add(new Wall(450 + 5500, 300, 300,50));
+        walls.add(new Wall(750 + 5500, 450, 150,50));
+        walls.add(new Wall(850 + 5500, 500, 50,150));
+        walls.add(new Wall(100 + 5500, 200, 50,300));
+        walls.add(new Wall(150 + 5500, 450, 300,50));
+        walls.add(new Wall(400 + 5500, 500, 50,100));
+        walls.add(new Wall(200 + 5500, 550, 250,50));
+        walls.add(new Wall(200 + 5500, 600, 50,250));
+        walls.add(new Wall(250 + 5500, 800, 250,50));
+        walls.add(new Wall(450 + 5500, 700, 50,100));
+        walls.add(new Wall(500 + 5500, 700, 50,100));
+        walls.add(new Wall(650 + 5500, 700, 50,100));
+        walls.add(new Wall(550 + 5500, 800, 100,50));
+        walls.add(new Wall(700 + 5500, 650, 200,50));
+
 //        blocks.add(new Block(600,300,50,50, "SET"));
 //        blocks.add(new Block(250,250,50,50, "ME"));
 //        blocks.add(new Block(200,350,50,50, "FREE"));
@@ -86,6 +172,10 @@ public class GameHandler extends JPanel implements Runnable {
 //        blocks.add(new Block(350,550,50,50, "SET"));
 //        blocks.add(new Block(350,600,50,50, "ME"));
 //        blocks.add(new Block(350,650,50,50, "FREE"));
+
+//        blocks.add(new Block(750,750,50,50,"LET"));
+//        blocks.add(new Block(800,700,50,50,"ME"));
+//        blocks.add(new Block(700,800,50,50,"IN"));
 
         // This is the Sandbox World
         // Just load this if you want to see ig
@@ -121,7 +211,7 @@ public class GameHandler extends JPanel implements Runnable {
     }
 
     private void update() {
-        player.update(walls, blocks);
+        player.update(walls, blocks, cracks);
         if (enemy != null) {
             enemy.update(player, walls);
         }
@@ -160,23 +250,91 @@ public class GameHandler extends JPanel implements Runnable {
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(camX, camY);
 
-        if (levelImage != null) {
-            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(levelImage, 0, 0, gridSize * gridWidth, gridSize * gridHeight, this);
-        }
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(level1Image, 0, 0, gridSize * gridWidth, gridSize * gridHeight, this);
+        g.drawImage(level2Image, 1500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
+        g.drawImage(level3Image, 3500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
+        g.drawImage(level4Image, 5500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
 
         if (showGrid) {
             Grid.drawGrid(g, WIDTH, HEIGHT);
         }
 
-//        g.setColor(Color.DARK_GRAY);
-//        for (Wall wall : walls) {
-//            g.fillRect(wall.x, wall.y, wall.width, wall.height);
-//        }
+        if (nextLevel2) {
+            block1.x = 300 + 1500;
+            block1.y = 500;
+            block1.label = "Give Me";
+
+            block2.x = 450 + 1500;
+            block2.y = 500;
+            block2.label = "A";
+
+            block3.x = 450 + 1500;
+            block3.y = 200;
+            block3.label = "Way";
+
+            player.x = 1600;
+            nextLevel2 = false;
+        }
+
+        if (nextLevel3) {
+            enemy = new Enemy(300,650,32,32);
+
+            block1.x = 150 + 3500;
+            block1.y = 300;
+            block1.label = "Uncover";
+
+            block2.x = 550 + 3500;
+            block2.y = 200;
+            block2.label = "This";
+
+            block3.x = 500 + 3500;
+            block3.y = 600;
+            block3.label = "Deepest Secret";
+
+            player.x = 3750;
+            player.y = 300;
+            nextLevel3 = false;
+        }
+
+        if (nextLevel4) {
+            block1.x = 600 + 5500;
+            block1.y = 500;
+            block1.label = "The";
+
+            block2.x = 300 + 5500;
+            block2.y = 600;
+            block2.label = "Final Way";
+
+            block3.x = 150 + 5500;
+            block3.y = 250;
+            block3.label = "Open Up";
+
+            player.x = 5750;
+            nextLevel4 = false;
+        }
+
+        if (endgame) {
+            endgame = false;
+            g.setColor(Color.RED);
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
+            enemy = null;
+        }
+
+        g.setColor(Color.DARK_GRAY);
+        for (Wall wall : walls) {
+            g.fillRect(wall.x, wall.y, wall.width, wall.height);
+        }
 
         g.setColor(Color.ORANGE);
         for (Block block : blocks) {
             block.draw(g, block.x, block.y, block.width, block.height);
+        }
+
+        g.setColor(Color.LIGHT_GRAY);
+        for (Crack crack : cracks) {
+            crack.draw(g);
         }
 
 
@@ -204,17 +362,6 @@ public class GameHandler extends JPanel implements Runnable {
             g.setFont(new Font("Arial", Font.BOLD, 50));
             g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
         }
-
-        if (nextlevel) {
-            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(backgroundImage, 0, 0, gridSize * gridWidth, gridSize * gridHeight, this);
-        }
-
-        if (endgame) {
-            g.setColor(Color.YELLOW);
-            g.setFont(new Font("Arial", Font.BOLD, 50));
-            g.drawString("YOU WON!", getWidth() / 2 - 120, getHeight() / 2);
-        }
     }
 
     private void updateRules() {
@@ -226,6 +373,11 @@ public class GameHandler extends JPanel implements Runnable {
         // Check for valid sentences using a hashmap grid system
         buildBlockMap();
 
+        boolean foundNextLevel2 = false;
+        boolean foundNextLevel3 = false;
+        boolean foundNextLevel4 = false;
+        boolean foundEndGame = false;
+
         for (Block block : blocks) {
             Point pos = getGridPosition(block.x, block.y);
 
@@ -235,38 +387,70 @@ public class GameHandler extends JPanel implements Runnable {
             Block down = blockMap.get(new Point(pos.x, pos.y + 1));
             Block down2 = blockMap.get(new Point(pos.x, pos.y + 2));
 
-            // Check horizontal sentence (left to right)
-            if (right != null && right2 != null && isValidSETMEFREE(block, right, right2)) {
+            if (right != null && right2 != null && isValidSSCA(block, right, right2)) {
                 block.color = Color.BLUE;
                 right.color = Color.BLUE;
                 right2.color = Color.BLUE;
-                GameHandler.endgame = true;
+                foundNextLevel2 = true;
             }
 
-            // Check vertical sentence (top to bottom)
-            if (down != null && down2 != null && isValidSETMEFREE(block, down, down2)) {
+            if (down != null && down2 != null && isValidSSCA(block, down, down2)) {
                 block.color = Color.BLUE;
                 down.color = Color.BLUE;
                 down2.color = Color.BLUE;
-                GameHandler.endgame = true;
+                foundNextLevel2 = true;
             }
 
-            if (right != null && right2 != null && isValidLETMEIN(block, right, right2)) {
+            if (right != null && right2 != null && isValidGMAW(block, right, right2)) {
                 block.color = Color.BLUE;
                 right.color = Color.BLUE;
                 right2.color = Color.BLUE;
-                nextLevel();
+                foundNextLevel3 = true;
             }
 
-            // Check vertical sentence (top to bottom)
-            if (down != null && down2 != null && isValidLETMEIN(block, down, down2)) {
+            if (down != null && down2 != null && isValidGMAW(block, down, down2)) {
                 block.color = Color.BLUE;
                 down.color = Color.BLUE;
                 down2.color = Color.BLUE;
-                nextLevel();
+                foundNextLevel3 = true;
+            }
+
+            if (right != null && right2 != null && isValidUTDS(block, right, right2)) {
+                block.color = Color.BLUE;
+                right.color = Color.BLUE;
+                right2.color = Color.BLUE;
+                foundNextLevel4 = true;
+            }
+
+            if (down != null && down2 != null && isValidUTDS(block, down, down2)) {
+                block.color = Color.BLUE;
+                down.color = Color.BLUE;
+                down2.color = Color.BLUE;
+                foundNextLevel4 = true;
+            }
+
+            if (right != null && right2 != null && isValidTFWOU(block, right, right2)) {
+                block.color = Color.BLUE;
+                right.color = Color.BLUE;
+                right2.color = Color.BLUE;
+                foundEndGame = true;
+            }
+
+            if (down != null && down2 != null && isValidTFWOU(block, down, down2)) {
+                block.color = Color.BLUE;
+                down.color = Color.BLUE;
+                down2.color = Color.BLUE;
+                foundEndGame = true;
             }
         }
+
+        // Apply results after checking all blocks
+        nextLevel2 = foundNextLevel2;
+        nextLevel3 = foundNextLevel3;
+        nextLevel4 = foundNextLevel4;
+        endgame = foundEndGame;
     }
+
 
     private HashMap<Point, Block> blockMap;
 
@@ -285,14 +469,24 @@ public class GameHandler extends JPanel implements Runnable {
         return new Point(gridX, gridY);
     }
 
-    private boolean isValidSETMEFREE(Block a, Block b, Block c) {
+    private boolean isValidSSCA(Block a, Block b, Block c) {
         List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("SET") && words.contains("ME") && words.contains("FREE");
+        return words.contains("School Secrets") && words.contains("Come") && words.contains("Alive");
     }
 
-    private boolean isValidLETMEIN(Block a, Block b, Block c) {
+    private boolean isValidGMAW(Block a, Block b, Block c) {
         List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("LET") && words.contains("ME") && words.contains("IN");
+        return words.contains("Give Me") && words.contains("A") && words.contains("Way");
+    }
+
+    private boolean isValidUTDS(Block a, Block b, Block c) {
+        List<String> words = Arrays.asList(a.label, b.label, c.label);
+        return words.contains("Uncover") && words.contains("This") && words.contains("Deepest Secret");
+    }
+
+    private boolean isValidTFWOU(Block a, Block b, Block c) {
+        List<String> words = Arrays.asList(a.label, b.label, c.label);
+        return words.contains("The") && words.contains("Final Way") && words.contains("Open Up");
     }
 
 
@@ -312,36 +506,10 @@ public class GameHandler extends JPanel implements Runnable {
         }
     }
 
-    private void nextLevel() {
-        System.out.println("Level 2 Unlocked!");
-
-        //enemy = new Enemy(250,250,32,32);
-
-        walls.clear();
-        walls.add(new Wall(150, 350, 200,50));
-        walls.add(new Wall(150, 400, 50,350));
-        walls.add(new Wall(200, 700, 100,50));
-        walls.add(new Wall(400, 700, 200,50));
-        walls.add(new Wall(550, 400, 50,350));
-        walls.add(new Wall(600, 400, 150,50));
-        walls.add(new Wall(700, 100, 50,300));
-        walls.add(new Wall(350, 100, 50,150));
-        walls.add(new Wall(350, 300, 50,100));
-        walls.add(new Wall(400, 100, 300,50));
-
-        walls.add(new Wall(150, 150, 200,50));
-        walls.add(new Wall(150, 200, 50,150));
-
-        blocks.clear();
-        blocks.add(new Block(700,750,50,50,"SET"));
-        blocks.add(new Block(600,200,50,50,"ME"));
-        blocks.add(new Block(250,600,50,50,"FREE"));
-    }
-
-
     public static void main(String[] args) {
         JFrame frame = new JFrame("Project C");
         GameHandler panel = new GameHandler();
+        frame.setTitle("Project C");
         frame.add(panel);
         frame.pack();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -352,7 +520,7 @@ public class GameHandler extends JPanel implements Runnable {
 
 class Grid {
     public static void drawGrid(Graphics g, int width, int height) {
-        width += 200;
+        width += 6200;
         height += 400;
 
         g.setColor(Color.LIGHT_GRAY);
@@ -371,7 +539,7 @@ class Grid {
 
 class Player {
     int x, y, size = 40;
-    private int speed = 4;
+    private int speed = 6;
     private boolean up, down, left, right;
 
     public Player(int x, int y) {
@@ -386,7 +554,7 @@ class Player {
         if (key == KeyEvent.VK_D) right = pressed;
     }
 
-    public void update(ArrayList<Wall> walls, ArrayList<Block> blocks) {
+    public void update(ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks) {
         int newX = x, newY = y;
 
         if (up) newY -= speed;
@@ -394,17 +562,25 @@ class Player {
         if (left) newX -= speed;
         if (right) newX += speed;
 
-        if (!collides(newX, y, walls, blocks)) x = newX;
-        if (!collides(x, newY, walls, blocks)) y = newY;
+        if (!collides(newX, y, walls, blocks, cracks)) x = newX;
+        if (!collides(x, newY, walls, blocks, cracks)) y = newY;
     }
 
-    private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks) {
+    private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks) {
         for (Wall wall : walls) {
             if (newX < wall.x + wall.width && newX + size > wall.x &&
                     newY < wall.y + wall.height && newY + size > wall.y) {
+                return false;
+            }
+        }
+
+        for (Crack crack : cracks) {
+            if (newX < crack.x + crack.width && newX + size > crack.x &&
+                    newY < crack.y + crack.height && newY + size > crack.y) {
                 return true;
             }
         }
+
         for (Block block : blocks) {
             if (block.collides(newX, newY, size)) {
                 block.push(newX - x, newY - y, walls, blocks);
@@ -417,7 +593,8 @@ class Player {
 
 class Enemy {
     int x, y, width, height;
-    int speed = 2; // Speed of movement
+    int speed = 2;
+    private ArrayList<Point> path = new ArrayList<>();
 
     public Enemy(int x, int y, int width, int height) {
         this.x = x;
@@ -427,46 +604,150 @@ class Enemy {
     }
 
     public void update(Player player, ArrayList<Wall> walls) {
-        int dx = 0, dy = 0;
+        // Calculate new path to player
+        path = Pathfinder.findPath(x, y, player.x, player.y, walls);
 
-        if (player.x > x) dx = speed;
-        if (player.x < x) dx = -speed;
-        if (player.y > y) dy = speed;
-        if (player.y < y) dy = -speed;
+        if (!path.isEmpty()) {
+            Point nextPoint = path.get(0);
 
-        if (!collidesWithWalls(x + dx, y, walls)) {
-            x += dx;
-        }
-        if (!collidesWithWalls(x, y + dy, walls)) {
-            y += dy;
-        }
+            // Move towards next point in path
+            if (x < nextPoint.x) x += speed;
+            if (x > nextPoint.x) x -= speed;
+            if (y < nextPoint.y) y += speed;
+            if (y > nextPoint.y) y -= speed;
 
-        if (collidesWithPlayer(player)) {
-            System.out.println("Game Over! Enemy caught the player.");
-            GameHandler.running = false;
+            // Remove point if reached
+            if (x == nextPoint.x && y == nextPoint.y) {
+                path.remove(0);
+            }
+
+            if (collidesWithPlayer(player)) {
+                System.out.println("Game Over! Enemy caught the player.");
+                GameHandler.running = false;
+            }
         }
     }
+
 
     private boolean collidesWithPlayer(Player player) {
         return x < player.x + player.size && x + width > player.x &&
                 y < player.y + player.size && y + height > player.y;
     }
 
-    public boolean collidesWithWalls(int newX, int newY, ArrayList<Wall> walls) {
-        for (Wall wall : walls) {
-            if (newX < wall.x + wall.width && newX + width > wall.x &&
-                    newY < wall.y + wall.height && newY + height > wall.y) {
-                return true;
-            }
-        }
-        return false;
-    }
+
 
     public void draw(Graphics g) {
         g.setColor(Color.RED);
-        g.fillRect(x, y, width, height);
+        g.fillOval(x, y, width, height);
+
+        // Debug: Draw path
+//        g.setColor(Color.YELLOW);
+//        for (Point p : path) {
+//            g.fillRect(p.x, p.y, 5, 5);
+//        }
     }
 }
+
+class Pathfinder {
+    private static final int GRID_SIZE = 50;
+
+    public static ArrayList<Point> findPath(int startX, int startY, int targetX, int targetY, ArrayList<Wall> walls) {
+        Set<Point> closedSet = new HashSet<>();
+        PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingInt(n -> n.f));
+
+        Map<Point, Point> cameFrom = new HashMap<>();
+        Map<Point, Integer> gScore = new HashMap<>();
+
+        Point start = new Point((startX / GRID_SIZE) * GRID_SIZE, (startY / GRID_SIZE) * GRID_SIZE);
+        Point target = new Point((targetX / GRID_SIZE) * GRID_SIZE, (targetY / GRID_SIZE) * GRID_SIZE);
+
+        gScore.put(start, 0);
+        openSet.add(new Node(start, heuristic(start, target)));
+
+        while (!openSet.isEmpty()) {
+            Node currentNode = openSet.poll();
+            Point current = currentNode.point;
+
+            if (current.equals(target)) {
+                return reconstructPath(cameFrom, current);
+            }
+
+            closedSet.add(current);
+
+            for (Point neighbor : getNeighbors(current, walls)) {
+                if (closedSet.contains(neighbor)) continue;
+
+                int tentativeGScore = gScore.getOrDefault(current, Integer.MAX_VALUE) + GRID_SIZE;
+                if (tentativeGScore < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
+                    cameFrom.put(neighbor, current);
+                    gScore.put(neighbor, tentativeGScore);
+                    int fScore = tentativeGScore + heuristic(neighbor, target);
+
+                    openSet.remove(new Node(neighbor, 0)); // Remove outdated nodes
+                    openSet.add(new Node(neighbor, fScore));
+                }
+            }
+        }
+
+        return new ArrayList<>(); // No path found
+    }
+
+    private static int heuristic(Point a, Point b) {
+        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+    }
+
+    private static ArrayList<Point> reconstructPath(Map<Point, Point> cameFrom, Point current) {
+        ArrayList<Point> path = new ArrayList<>();
+        while (cameFrom.containsKey(current)) {
+            path.add(0, current);
+            current = cameFrom.get(current);
+        }
+        return path;
+    }
+
+    private static List<Point> getNeighbors(Point current, ArrayList<Wall> walls) {
+        List<Point> neighbors = new ArrayList<>();
+        int[][] moves = {{-GRID_SIZE, 0}, {GRID_SIZE, 0}, {0, -GRID_SIZE}, {0, GRID_SIZE}};
+
+        for (int[] move : moves) {
+            Point newPoint = new Point(current.x + move[0], current.y + move[1]);
+            if (!isColliding(newPoint, walls)) {
+                neighbors.add(newPoint);
+            }
+        }
+        return neighbors;
+    }
+
+    private static boolean isColliding(Point point, ArrayList<Wall> walls) {
+        return walls.stream().anyMatch(wall ->
+                point.x < wall.x + wall.width && point.x + GRID_SIZE > wall.x &&
+                        point.y < wall.y + wall.height && point.y + GRID_SIZE > wall.y);
+    }
+
+    static class Node {
+        Point point;
+        int f;
+
+        Node(Point point, int f) {
+            this.point = point;
+            this.f = f;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            Node node = (Node) obj;
+            return Objects.equals(point, node.point);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(point);
+        }
+    }
+}
+
 
 
 class Wall {
@@ -532,3 +813,32 @@ class Block {
     }
 }
 
+class Crack {
+    int x, y, width, height;
+    boolean isFixed;
+
+    public Crack(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.isFixed = false; // By default, it is broken (impassable)
+    }
+
+    public void setFixed(boolean fixed) {
+        this.isFixed = fixed;
+    }
+
+    public boolean isPassable() {
+        return isFixed;
+    }
+
+    public void draw(Graphics g) {
+        g.setColor(isFixed ? Color.LIGHT_GRAY : Color.DARK_GRAY);
+        g.fillRect(x, y, width, height);
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, width, height);
+    }
+}
