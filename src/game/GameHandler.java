@@ -20,6 +20,7 @@ public class GameHandler extends JPanel implements Runnable {
     private ArrayList<Wall> walls;
     private ArrayList<Block> blocks;
     private ArrayList<Crack> cracks;
+    private ArrayList<Staircase> staircases;
     private long startTime;
     private final int TIME_LIMIT = 100000;
     private boolean showGrid = false;
@@ -29,10 +30,15 @@ public class GameHandler extends JPanel implements Runnable {
     private Image level4Image;
     private Image jumpscareImage;
 
+    private boolean startGame = false;
     private boolean nextLevel2 = false;
     private boolean nextLevel3 = false;
     private boolean nextLevel4 = false;
     private boolean endgame = false;
+
+    private boolean canUseAbility = true;
+    private long abilityCooldownEnd = 0;  // Stores cooldown end time
+    private long abilityActiveEnd = 0;    // Stores freeze end time
 
     Block block1 = new Block(750,750,50,50,"School Secrets");
     Block block2 = new Block(250,500,50,50,"Come");
@@ -58,6 +64,7 @@ public class GameHandler extends JPanel implements Runnable {
         walls = new ArrayList<>();
         blocks = new ArrayList<>();
         cracks = new ArrayList<>();
+        staircases = new ArrayList<>();
 
 
 
@@ -93,6 +100,12 @@ public class GameHandler extends JPanel implements Runnable {
         walls.add(new Wall(350, 300, 50,100));
         walls.add(new Wall(400, 100, 300,50));
         walls.add(new Wall(350, 250, 50,50));
+
+        cracks.add(new Crack(800,900,50,50));
+
+        blocks.add(new Block(800,750,50,50,"Crack"));
+        blocks.add(new Block(300,500,50,50,"Is"));
+        blocks.add(new Block(650,200,50,50,"Fix"));
 
         blocks.add(block1);
         blocks.add(block2);
@@ -211,7 +224,7 @@ public class GameHandler extends JPanel implements Runnable {
     }
 
     private void update() {
-        player.update(walls, blocks, cracks);
+        player.update(walls, blocks, cracks, staircases);
         if (enemy != null) {
             enemy.update(player, walls);
         }
@@ -229,6 +242,22 @@ public class GameHandler extends JPanel implements Runnable {
             }
             System.exit(0);
         }
+
+        long currentTime = System.currentTimeMillis();
+
+        // Unfreeze enemy after 5 seconds
+        if (currentTime >= abilityActiveEnd && abilityActiveEnd > 0) {
+            if (enemy != null) {
+                enemy.speed = 2;
+                abilityActiveEnd = 0;
+            }
+        }
+
+        // Reset ability cooldown after 15 seconds
+        if (currentTime >= abilityCooldownEnd && abilityCooldownEnd > 0) {
+            canUseAbility = true;
+            abilityCooldownEnd = 0;
+        }
     }
 
     @Override
@@ -241,6 +270,8 @@ public class GameHandler extends JPanel implements Runnable {
         int gridSize = 50;
         int gridWidth = (WIDTH + 200) / gridSize;
         int gridHeight = (HEIGHT + 400) / gridSize;
+
+        long currentTime = System.currentTimeMillis();
 
         updateRules();
 
@@ -277,7 +308,9 @@ public class GameHandler extends JPanel implements Runnable {
             nextLevel2 = false;
         }
 
-        if (nextLevel3) {
+        if (nextLevel3 && Config.isInStaircase) {
+            Config.isInStaircase = false;
+
             enemy = new Enemy(300,650,32,32);
 
             block1.x = 150 + 3500;
@@ -314,14 +347,6 @@ public class GameHandler extends JPanel implements Runnable {
             nextLevel4 = false;
         }
 
-        if (endgame) {
-            endgame = false;
-            g.setColor(Color.RED);
-            g.setFont(new Font("Arial", Font.BOLD, 50));
-            g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
-            enemy = null;
-        }
-
         g.setColor(Color.DARK_GRAY);
         for (Wall wall : walls) {
             g.fillRect(wall.x, wall.y, wall.width, wall.height);
@@ -355,12 +380,40 @@ public class GameHandler extends JPanel implements Runnable {
         int seconds = timeLeft % 60;
         g.drawString(String.format("Time Left: %d:%02d", minutes, seconds), 10, 20);
 
+        if (!canUseAbility) {
+            int remainingCooldown = (int) ((abilityCooldownEnd - currentTime) / 1000);
+            g.setColor(Color.RED);
+            g.drawString("Cooldown: " + remainingCooldown + "s", getWidth() - 100, 30);
+        } else {
+            g.setColor(Color.GREEN);
+            g.drawString("Ability Ready!", getWidth() - 100, 30);
+        }
+
         if (!running) {
             g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             g.drawImage(jumpscareImage, 0, 0, getWidth(), getHeight(), this);
             g.setColor(Color.RED);
             g.setFont(new Font("Arial", Font.BOLD, 50));
             g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
+        }
+
+        if (!startGame) {
+            g.setColor(Color.BLACK);
+            g.fillRect(0,0,WIDTH,HEIGHT);
+
+            //not centered im centering it later
+
+            g.setColor(Color.RED);
+            g.drawString("Horror Game", 300, 100);
+            g.drawString("<Press Space to Start the game!>", 250, 200);
+        }
+
+        if (endgame) {
+            endgame = false;
+            g.setColor(Color.RED);
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
+            enemy = null;
         }
     }
 
@@ -373,6 +426,7 @@ public class GameHandler extends JPanel implements Runnable {
         // Check for valid sentences using a hashmap grid system
         buildBlockMap();
 
+        boolean foundCrackFix = false;
         boolean foundNextLevel2 = false;
         boolean foundNextLevel3 = false;
         boolean foundNextLevel4 = false;
@@ -386,6 +440,20 @@ public class GameHandler extends JPanel implements Runnable {
 
             Block down = blockMap.get(new Point(pos.x, pos.y + 1));
             Block down2 = blockMap.get(new Point(pos.x, pos.y + 2));
+
+            if (right != null && right2 != null && isValidSJLI(block, right, right2)) {
+                block.color = Color.BLUE;
+                right.color = Color.BLUE;
+                right2.color = Color.BLUE;
+                foundCrackFix = true;
+            }
+
+            if (down != null && down2 != null && isValidSJLI(block, down, down2)) {
+                block.color = Color.BLUE;
+                down.color = Color.BLUE;
+                down2.color = Color.BLUE;
+                foundCrackFix = true;
+            }
 
             if (right != null && right2 != null && isValidSSCA(block, right, right2)) {
                 block.color = Color.BLUE;
@@ -449,6 +517,12 @@ public class GameHandler extends JPanel implements Runnable {
         nextLevel3 = foundNextLevel3;
         nextLevel4 = foundNextLevel4;
         endgame = foundEndGame;
+
+        if (foundCrackFix) {
+            for (Crack crack : cracks) {
+                crack.setFixed(true); // Mark all cracks as fixed (passable)
+            }
+        }
     }
 
 
@@ -489,7 +563,10 @@ public class GameHandler extends JPanel implements Runnable {
         return words.contains("The") && words.contains("Final Way") && words.contains("Open Up");
     }
 
-
+    private boolean isValidSJLI(Block a, Block b, Block c) {
+        List<String> words = Arrays.asList(a.label, b.label, c.label);
+        return words.contains("Crack") && words.contains("Is") && words.contains("Fix");
+    }
 
     private class KeyHandler extends KeyAdapter {
         @Override
@@ -497,6 +574,22 @@ public class GameHandler extends JPanel implements Runnable {
             if (e.getKeyCode() == KeyEvent.VK_G) {
                 showGrid = !showGrid;
             }
+
+            if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                startGame = true;
+                startTime = System.currentTimeMillis();
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_E && canUseAbility) {
+                if (enemy != null) {
+                    long currentTime = System.currentTimeMillis();
+                    enemy.speed = 0; // Freeze enemy
+                    abilityActiveEnd = currentTime + 5000; // Freeze lasts 5 seconds
+                    abilityCooldownEnd = currentTime + 15000; // 15 sec cooldown
+                    canUseAbility = false; // Disable ability until cooldown ends
+                }
+            }
+
             player.setKey(e.getKeyCode(), true);
         }
 
@@ -554,7 +647,7 @@ class Player {
         if (key == KeyEvent.VK_D) right = pressed;
     }
 
-    public void update(ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks) {
+    public void update(ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases) {
         int newX = x, newY = y;
 
         if (up) newY -= speed;
@@ -562,11 +655,11 @@ class Player {
         if (left) newX -= speed;
         if (right) newX += speed;
 
-        if (!collides(newX, y, walls, blocks, cracks)) x = newX;
-        if (!collides(x, newY, walls, blocks, cracks)) y = newY;
+        if (!collides(newX, y, walls, blocks, cracks, staircases)) x = newX;
+        if (!collides(x, newY, walls, blocks, cracks, staircases)) y = newY;
     }
 
-    private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks) {
+    private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases) {
         for (Wall wall : walls) {
             if (newX < wall.x + wall.width && newX + size > wall.x &&
                     newY < wall.y + wall.height && newY + size > wall.y) {
@@ -575,9 +668,17 @@ class Player {
         }
 
         for (Crack crack : cracks) {
-            if (newX < crack.x + crack.width && newX + size > crack.x &&
-                    newY < crack.y + crack.height && newY + size > crack.y) {
+            if ((newX < crack.x + crack.width && newX + size > crack.x &&
+                    newY < crack.y + crack.height && newY + size > crack.y) && !crack.isFixed) {
                 return true;
+            }
+        }
+
+        for (Staircase staircase : staircases) {
+            if (newX < staircase.x + staircase.width && newX + size > staircase.x &&
+                    newY < staircase.y + staircase.height && newY + size > staircase.y) {
+                Config.isInStaircase = true;
+                return false;
             }
         }
 
@@ -840,5 +941,15 @@ class Crack {
 
     public Rectangle getBounds() {
         return new Rectangle(x, y, width, height);
+    }
+}
+
+class Staircase {
+    int x, y, width, height;
+    public Staircase(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
     }
 }
