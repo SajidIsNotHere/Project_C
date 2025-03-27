@@ -16,11 +16,12 @@ public class GameHandler extends JPanel implements Runnable {
     private Thread gameThread;
     public static boolean running = false;
     private Player player;
-    private Enemy enemy;
+    private NPC npc;
     private ArrayList<Wall> walls;
     private ArrayList<Block> blocks;
     private ArrayList<Crack> cracks;
     private ArrayList<Staircase> staircases;
+    private ArrayList<Enemy> enemies;
     private long startTime;
     private final int TIME_LIMIT = 100000;
     private boolean showGrid = false;
@@ -65,7 +66,7 @@ public class GameHandler extends JPanel implements Runnable {
         blocks = new ArrayList<>();
         cracks = new ArrayList<>();
         staircases = new ArrayList<>();
-
+        enemies = new ArrayList<>();
 
 
         // LONG AHH CODE gotta optimize prob next week
@@ -101,15 +102,11 @@ public class GameHandler extends JPanel implements Runnable {
         walls.add(new Wall(400, 100, 300,50));
         walls.add(new Wall(350, 250, 50,50));
 
-        cracks.add(new Crack(800,900,50,50));
-
-        blocks.add(new Block(800,750,50,50,"Crack"));
-        blocks.add(new Block(300,500,50,50,"Is"));
-        blocks.add(new Block(650,200,50,50,"Fix"));
-
         blocks.add(block1);
         blocks.add(block2);
         blocks.add(block3);
+
+        npc = new NPC(700,550);
         // Level 2
 
         walls.add(new Wall(1500, 0, 1050,50));
@@ -225,7 +222,8 @@ public class GameHandler extends JPanel implements Runnable {
 
     private void update() {
         player.update(walls, blocks, cracks, staircases);
-        if (enemy != null) {
+        npc.update(player);
+        for (Enemy enemy : enemies) {
             enemy.update(player, walls);
         }
     }
@@ -247,7 +245,7 @@ public class GameHandler extends JPanel implements Runnable {
 
         // Unfreeze enemy after 5 seconds
         if (currentTime >= abilityActiveEnd && abilityActiveEnd > 0) {
-            if (enemy != null) {
+            for (Enemy enemy : enemies) {
                 enemy.speed = 2;
                 abilityActiveEnd = 0;
             }
@@ -308,10 +306,12 @@ public class GameHandler extends JPanel implements Runnable {
             nextLevel2 = false;
         }
 
+        if (nextLevel3) {
+            staircases.add(new Staircase(650 + 1500, 150, 50, 50));
+        }
+
         if (nextLevel3 && Config.isInStaircase) {
             Config.isInStaircase = false;
-
-            enemy = new Enemy(300,650,32,32);
 
             block1.x = 150 + 3500;
             block1.y = 300;
@@ -331,6 +331,9 @@ public class GameHandler extends JPanel implements Runnable {
         }
 
         if (nextLevel4) {
+            enemies.add(new Enemy(550 + 5500,700,32,32));
+            enemies.add(new Enemy(300 + 5500,650,32,32));
+
             block1.x = 600 + 5500;
             block1.y = 500;
             block1.label = "The";
@@ -362,17 +365,22 @@ public class GameHandler extends JPanel implements Runnable {
             crack.draw(g);
         }
 
+        g.setColor(Color.PINK);
+        for (Staircase staircase : staircases) {
+            g.fillRect(staircase.x, staircase.y, staircase.width, staircase.height);
+        }
 
-        g.setColor(Color.BLUE);
-        g.fillOval(player.x, player.y, player.size, player.size);
-
-        if (enemy != null) {
+        for (Enemy enemy : enemies) {
             g.setColor(Color.RED);
             enemy.draw(g);
         }
 
+        player.draw(g);
+        npc.draw(g);
+
         g2d.translate(-camX, -camY);
 
+        // Not putting this in a function cuz it aint that big
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 20));
         int timeLeft = TIME_LIMIT - (int) ((System.currentTimeMillis() - startTime) / 1000);
@@ -380,13 +388,15 @@ public class GameHandler extends JPanel implements Runnable {
         int seconds = timeLeft % 60;
         g.drawString(String.format("Time Left: %d:%02d", minutes, seconds), 10, 20);
 
+        drawStaminaBar(g, player, WIDTH);
+
         if (!canUseAbility) {
             int remainingCooldown = (int) ((abilityCooldownEnd - currentTime) / 1000);
             g.setColor(Color.RED);
-            g.drawString("Cooldown: " + remainingCooldown + "s", getWidth() - 100, 30);
+            g.drawString("Cooldown: " + remainingCooldown + "s", getWidth() - 150, 30);
         } else {
             g.setColor(Color.GREEN);
-            g.drawString("Ability Ready!", getWidth() - 100, 30);
+            g.drawString("Ability Ready!", getWidth() - 150, 30);
         }
 
         if (!running) {
@@ -410,12 +420,31 @@ public class GameHandler extends JPanel implements Runnable {
 
         if (endgame) {
             endgame = false;
-            g.setColor(Color.RED);
+            g.setColor(Color.GREEN);
             g.setFont(new Font("Arial", Font.BOLD, 50));
-            g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
-            enemy = null;
+            g.drawString("YOU WIN", getWidth() / 2 - 120, getHeight() / 2);
         }
     }
+
+    private void drawStaminaBar(Graphics g, Player player, int screenWidth) {
+        int barWidth = 150;
+        int barHeight = 10;
+        int x = (screenWidth - barWidth) / 2;
+        int y = 20;
+
+        double staminaPercent = player.stamina / player.maxStamina;
+        int currentWidth = (int) (barWidth * staminaPercent);
+
+        g.setColor(Color.GRAY);
+        g.fillRect(x, y, barWidth, barHeight);
+
+        g.setColor(staminaPercent > 0.3 ? Color.GREEN : Color.RED);
+        g.fillRect(x, y, currentWidth, barHeight);
+
+        g.setColor(Color.BLACK);
+        g.drawRect(x, y, barWidth, barHeight);
+    }
+
 
     private void updateRules() {
         // Reset colors
@@ -576,12 +605,14 @@ public class GameHandler extends JPanel implements Runnable {
             }
 
             if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-                startGame = true;
-                startTime = System.currentTimeMillis();
+                if (!startGame) {
+                    startGame = true;
+                    startTime = System.currentTimeMillis();
+                }
             }
 
             if (e.getKeyCode() == KeyEvent.VK_E && canUseAbility) {
-                if (enemy != null) {
+                for (Enemy enemy : enemies) {
                     long currentTime = System.currentTimeMillis();
                     enemy.speed = 0; // Freeze enemy
                     abilityActiveEnd = currentTime + 5000; // Freeze lasts 5 seconds
@@ -590,12 +621,12 @@ public class GameHandler extends JPanel implements Runnable {
                 }
             }
 
-            player.setKey(e.getKeyCode(), true);
+            player.setKey(e.getKeyCode(), true, npc);
         }
 
         @Override
         public void keyReleased(KeyEvent e) {
-            player.setKey(e.getKeyCode(), false);
+            player.setKey(e.getKeyCode(), false, npc);
         }
     }
 
@@ -632,38 +663,105 @@ class Grid {
 
 class Player {
     int x, y, size = 40;
-    private int speed = 6;
-    private boolean up, down, left, right;
+
+    private double speed = 0;
+    private double acceleration = 0.5;
+    private double maxSpeed = 3;
+    private double sprintSpeed = 5;
+    private double deceleration = 0.4;
+
+    private boolean up, down, left, right, sprinting;
+
+    public double stamina = 100;
+    public double maxStamina = 100;
+    private double staminaRegen = 0.3;
+    private double staminaDrain = 1.3;
+
+    // Animation System
+    private int animationIndex = 0;
+    private int animationTimer = 0;
+    private int animationSpeed = 10;
+    private Color[] animationFrames = {Color.BLUE, Color.GREEN, Color.YELLOW, Color.RED}; // 4 frames
 
     public Player(int x, int y) {
         this.x = x;
         this.y = y;
     }
 
-    public void setKey(int key, boolean pressed) {
+    public void setKey(int key, boolean pressed, NPC npc) {
         if (key == KeyEvent.VK_W) up = pressed;
         if (key == KeyEvent.VK_S) down = pressed;
         if (key == KeyEvent.VK_A) left = pressed;
         if (key == KeyEvent.VK_D) right = pressed;
+        if (key == KeyEvent.VK_SHIFT) sprinting = pressed;
+
+        if (pressed) {
+            if (key == KeyEvent.VK_F) npc.interact();
+            if (key == KeyEvent.VK_SPACE && npc.isInDialogue()) npc.exitDialogue();
+        }
     }
 
     public void update(ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases) {
+        double targetSpeed = sprinting && stamina > 0 ? sprintSpeed : maxSpeed;
+
+        if (sprinting && stamina > 0) {
+            stamina -= staminaDrain;
+            if (stamina < 0) stamina = 0;
+        } else {
+            stamina += staminaRegen;
+            if (stamina > 100) stamina = 100;
+        }
+
+        boolean moving = false; // Track if the player is actually moving
+
+        if ((up && !down) || (down && !up) || (left && !right) || (right && !left)) {
+            speed += acceleration;
+            if (speed > targetSpeed) speed = targetSpeed;
+            moving = true;
+        } else {
+            speed -= deceleration;
+            if (speed < 0) speed = 0;
+        }
+
         int newX = x, newY = y;
 
-        if (up) newY -= speed;
-        if (down) newY += speed;
-        if (left) newX -= speed;
-        if (right) newX += speed;
+        if (speed > 0) { // Only move if speed > 0
+            if (up) newY -= speed;
+            if (down) newY += speed;
+            if (left) newX -= speed;
+            if (right) newX += speed;
+        }
 
         if (!collides(newX, y, walls, blocks, cracks, staircases)) x = newX;
         if (!collides(x, newY, walls, blocks, cracks, staircases)) y = newY;
+
+        // Final check: Is the player actually moving?
+        if (speed > 0) moving = true;
+
+        // Animation Logic
+//        if (moving) {
+//            animationTimer++;
+//            int sprintFactor = sprinting ? 2 : 1; // Sprinting speeds up animation
+//            if (animationTimer >= animationSpeed / sprintFactor) {
+//                animationIndex = (animationIndex + 1) % animationFrames.length;
+//                animationTimer = 0;
+//            }
+//        } else {
+//            animationIndex = 0; // Reset animation when not moving
+//        }
+    }
+
+    public void draw(Graphics g) {
+        g.setColor(animationFrames[animationIndex]);
+        g.fillOval(x, y, size, size);
+
     }
 
     private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases) {
         for (Wall wall : walls) {
             if (newX < wall.x + wall.width && newX + size > wall.x &&
                     newY < wall.y + wall.height && newY + size > wall.y) {
-                return false;
+                return true;
             }
         }
 
@@ -684,11 +782,106 @@ class Player {
 
         for (Block block : blocks) {
             if (block.collides(newX, newY, size)) {
-                block.push(newX - x, newY - y, walls, blocks);
+                block.push(newX - x, newY - y, walls, blocks, cracks);
                 return true;
             }
         }
         return false;
+    }
+}
+
+class NPC {
+    private int x, y, size = 40;
+    private boolean playerNearby = false;
+    public boolean inDialogue = false;
+    public String dialogue = "Hello there! Welcome to the adventure.";
+    private Player player;
+
+    public NPC(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public void update(Player player) {
+        // Check if the player is nearby (distance threshold)
+        int distance = (int) Math.sqrt(Math.pow(player.x - x, 2) + Math.pow(player.y - y, 2));
+        playerNearby = distance < 60; // Adjust range as needed
+        this.player = player;
+    }
+
+    public void interact() {
+        if (playerNearby) {
+            inDialogue = true;
+        }
+    }
+
+    public void exitDialogue() {
+        inDialogue = false;
+    }
+
+    public void draw(Graphics g) {
+        // Draw NPC
+        g.setColor(Color.YELLOW);
+        g.fillRect(x, y, size, size);
+
+        // Draw "!" above NPC if player is nearby
+        if (playerNearby && !inDialogue) {
+            g.setColor(Color.WHITE);
+            g.fillRect(x + size / 3, y - 20, size / 3, size / 3);
+        }
+
+        // Draw dialogue box if in dialogue
+        if (inDialogue) {
+            int boxWidth = 400;
+            int x = player.x - 150;
+            int y = player.y + 100;
+
+            g.setFont(new Font("Arial", Font.PLAIN, 18));
+            FontMetrics fm = g.getFontMetrics();
+
+            // Wrap text automatically
+            List<String> lines = wrapText(dialogue, fm, boxWidth - 20);
+            int boxHeight = 30 + (lines.size() * fm.getHeight());
+
+            // Draw dialogue box
+            g.setColor(Color.BLACK);
+            g.fillRect(x, y, boxWidth, boxHeight);
+            g.setColor(Color.WHITE);
+            g.drawRect(x, y, boxWidth, boxHeight);
+
+            // Draw text inside the box
+            int textX = x + 10;
+            int textY = y + 25;
+            for (String line : lines) {
+                g.drawString(line, textX, textY);
+                textY += fm.getHeight();
+            }
+        }
+    }
+
+    public boolean isInDialogue() {
+        return inDialogue;
+    }
+
+    private ArrayList<String> wrapText(String text, FontMetrics metrics, int maxWidth) {
+        ArrayList<String> lines = new ArrayList<>();
+        String[] words = text.split(" ");
+        StringBuilder currentLine = new StringBuilder();
+
+        for (String word : words) {
+            if (metrics.stringWidth(currentLine + word) < maxWidth) {
+                currentLine.append(word).append(" ");
+            } else {
+                lines.add(currentLine.toString().trim());
+                currentLine = new StringBuilder(word).append(" ");
+            }
+        }
+
+        if (!currentLine.isEmpty()) {
+            lines.add(currentLine.toString().trim());
+        }
+
+        return lines;
     }
 }
 
@@ -879,7 +1072,7 @@ class Block {
         return newX < x + width && newX + size > x && newY < y + height && newY + size > y;
     }
 
-    public void push(int dx, int dy, ArrayList<Wall> walls, ArrayList<Block> blocks) {
+    public void push(int dx, int dy, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks) {
         int newX = x + dx;
         int newY = y + dy;
 
@@ -889,9 +1082,15 @@ class Block {
             }
         }
 
+        for (Crack crack : cracks) {
+            if (newX < crack.x + crack.width && newX + width > crack.x && newY < crack.y + crack.height && newY + height > crack.y) {
+                return;
+            }
+        }
+
         for (Block block : blocks) {
             if (block != this && block.collides(newX, newY, width)) {
-                block.push(dx, dy, walls, blocks);
+                block.push(dx, dy, walls, blocks, cracks);
                 return;
             }
         }
