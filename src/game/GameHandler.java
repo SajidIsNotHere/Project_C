@@ -4,11 +4,16 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Arrays;
 import java.util.*;
+
+import javax.sound.sampled.*;
+import java.io.File;
 
 public class GameHandler extends JPanel implements Runnable {
     private final int WIDTH = 800, HEIGHT = 600;
@@ -21,6 +26,7 @@ public class GameHandler extends JPanel implements Runnable {
     private ArrayList<Block> blocks;
     private ArrayList<Crack> cracks;
     private ArrayList<Staircase> staircases;
+    private ArrayList<Gate> gates;
     private ArrayList<Enemy> enemies;
     private long startTime;
     private final int TIME_LIMIT = 100000;
@@ -29,21 +35,45 @@ public class GameHandler extends JPanel implements Runnable {
     private Image level2Image;
     private Image level3Image;
     private Image level4Image;
+    private Image level5Image;
     private Image jumpscareImage;
+    private Image mainMenuImage;
 
     private boolean startGame = false;
     private boolean nextLevel2 = false;
     private boolean nextLevel3 = false;
     private boolean nextLevel4 = false;
-    private boolean endgame = false;
+    private boolean nextLevel5 = false;
 
     private boolean canUseAbility = true;
     private long abilityCooldownEnd = 0;  // Stores cooldown end time
     private long abilityActiveEnd = 0;    // Stores freeze end time
 
-    Block block1 = new Block(750,750,50,50,"School Secrets");
-    Block block2 = new Block(250,500,50,50,"Come");
-    Block block3 = new Block(600,200,50,50,"Alive");
+    ScreenTransition transition = new ScreenTransition();
+    SoundPlayer backgroundMusic = new SoundPlayer("src/game/music/bg.wav");
+
+    Buttons startButton = new Buttons(300, 250, 200, 100, Color.GREEN, "Start");
+    Buttons exitButton = new Buttons(300,500,200,100, Color.RED, "Exit");
+
+    Block block1 = new Block(750,750,50,50,"School");
+    Block block2 = new Block(250,500,50,50,"Secrets");
+    Block block3 = new Block(600,200,50,50,"Come");
+    Block block4 = new Block(150,150,50,50,"Alive");
+    Block block5 = new Block(0, 2000,50,50,"None");
+
+    Block crackWord_1 = new Block(250 + 3500,250,50,50,"Crack");
+    Block crackWord_2 = new Block(500 + 3500,500,50,50,"Is");
+    Block crackWord_3 = new Block(300 + 3500, 650,50,50,"Fix");
+
+    Gate endGate = new Gate(700, 850, 200, 150);
+
+    Crack crack_1 = new Crack(450 + 3500, 200, 50,50);
+    Crack crack_2 = new Crack(450 + 3500, 250, 50,50);
+    Crack crack_3 = new Crack(700 + 3500, 500, 50,50);
+    Crack crack_4 = new Crack(700 + 3500, 550, 50,50);
+    Crack crack_5 = new Crack(700 + 3500, 600, 50,50);
+    Crack crack_6 = new Crack(450 + 3500, 2000, 50,50);
+    Crack crack_7 = new Crack(450 + 3500, 2000, 50,50);
 
     // every single class will be in their own independent class script
     // next week for more organized workspace
@@ -53,12 +83,15 @@ public class GameHandler extends JPanel implements Runnable {
         setFocusable(true);
         requestFocus();
         addKeyListener(new KeyHandler());
+        addMouseListener(new MouseHandler());
 
+        mainMenuImage = new ImageIcon(getClass().getResource("/game/images/main_menu.png")).getImage();
         jumpscareImage = new ImageIcon(getClass().getResource("/game/images/jumpscare.png")).getImage();
         level1Image = new ImageIcon(getClass().getResource("/game/images/level_1.png")).getImage();
         level2Image = new ImageIcon(getClass().getResource("/game/images/level_2.png")).getImage();
         level3Image = new ImageIcon(getClass().getResource("/game/images/level_3.png")).getImage();
         level4Image = new ImageIcon(getClass().getResource("/game/images/level_4.png")).getImage();
+        level5Image = new ImageIcon(getClass().getResource("/game/images/level_5.png")).getImage();
 
         player = new Player(900, 900);
         //enemy = new Enemy(100,100,32,32);
@@ -66,7 +99,10 @@ public class GameHandler extends JPanel implements Runnable {
         blocks = new ArrayList<>();
         cracks = new ArrayList<>();
         staircases = new ArrayList<>();
+        gates = new ArrayList<>();
         enemies = new ArrayList<>();
+
+        //backgroundMusic.play();
 
 
         // LONG AHH CODE gotta optimize prob next week
@@ -102,11 +138,40 @@ public class GameHandler extends JPanel implements Runnable {
         walls.add(new Wall(400, 100, 300,50));
         walls.add(new Wall(350, 250, 50,50));
 
+//        walls.add(new Wall(150, 350, 200, 10)); // Thinner height
+//        walls.add(new Wall(150, 400, 10, 350)); // Thinner width
+//        walls.add(new Wall(200, 700, 100, 10));
+//        walls.add(new Wall(400, 700, 200, 10));
+//        walls.add(new Wall(550, 400, 10, 350));
+//        walls.add(new Wall(600, 400, 150, 10));
+//        walls.add(new Wall(700, 100, 10, 300));
+//        walls.add(new Wall(350, 100, 10, 150));
+//        walls.add(new Wall(350, 300, 10, 100));
+//        walls.add(new Wall(400, 100, 300, 10));
+//        walls.add(new Wall(350, 250, 10, 10)); // Even smaller
+
+
+
+        cracks.add(crack_1);
+        cracks.add(crack_2);
+        cracks.add(crack_3);
+        cracks.add(crack_4);
+        cracks.add(crack_5);
+        cracks.add(crack_6);
+        cracks.add(crack_7);
+
         blocks.add(block1);
         blocks.add(block2);
         blocks.add(block3);
+        blocks.add(block4);
+        blocks.add(block5);
+        blocks.add(crackWord_1);
+        blocks.add(crackWord_2);
+        blocks.add(crackWord_3);
 
-        npc = new NPC(700,550);
+        gates.add(endGate);
+
+        npc = new NPC(350 + 3700,200);
         // Level 2
 
         walls.add(new Wall(1500, 0, 1050,50));
@@ -175,6 +240,31 @@ public class GameHandler extends JPanel implements Runnable {
         walls.add(new Wall(550 + 5500, 800, 100,50));
         walls.add(new Wall(700 + 5500, 650, 200,50));
 
+        // Level 5
+
+        walls.add(new Wall(7500, 0, 1050,50));
+        walls.add(new Wall(7500, 50, 50,950));
+        walls.add(new Wall(7500, 950, 1050,50));
+        walls.add(new Wall(8500, 50, 50,950));
+
+        walls.add(new Wall(100 + 7500, 150, 350,50));
+        walls.add(new Wall(400 + 7500, 100, 350,50));
+        walls.add(new Wall(700 + 7500, 150, 50,350));
+        walls.add(new Wall(450 + 7500, 300, 300,50));
+        walls.add(new Wall(750 + 7500, 450, 150,50));
+        walls.add(new Wall(850 + 7500, 500, 50,150));
+        walls.add(new Wall(100 + 7500, 200, 50,300));
+        walls.add(new Wall(150 + 7500, 450, 300,50));
+        walls.add(new Wall(400 + 7500, 500, 50,100));
+        walls.add(new Wall(200 + 7500, 550, 250,50));
+        walls.add(new Wall(200 + 7500, 600, 50,250));
+        walls.add(new Wall(250 + 7500, 800, 250,50));
+        walls.add(new Wall(450 + 7500, 700, 50,100));
+        walls.add(new Wall(500 + 7500, 700, 50,100));
+        walls.add(new Wall(650 + 7500, 700, 50,100));
+        walls.add(new Wall(550 + 7500, 800, 100,50));
+        walls.add(new Wall(700 + 7500, 650, 200,50));
+
 //        blocks.add(new Block(600,300,50,50, "SET"));
 //        blocks.add(new Block(250,250,50,50, "ME"));
 //        blocks.add(new Block(200,350,50,50, "FREE"));
@@ -221,8 +311,9 @@ public class GameHandler extends JPanel implements Runnable {
     }
 
     private void update() {
-        player.update(walls, blocks, cracks, staircases);
+        player.update(walls, blocks, cracks, staircases, gates);
         npc.update(player);
+        transition.update();
         for (Enemy enemy : enemies) {
             enemy.update(player, walls);
         }
@@ -284,46 +375,59 @@ public class GameHandler extends JPanel implements Runnable {
         g.drawImage(level2Image, 1500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
         g.drawImage(level3Image, 3500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
         g.drawImage(level4Image, 5500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
+        g.drawImage(level5Image, 7500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
 
         if (showGrid) {
-            Grid.drawGrid(g, WIDTH, HEIGHT);
+           Grid.drawGrid(g, WIDTH, HEIGHT);
         }
 
         if (nextLevel2) {
+            transition.startTransition();
             block1.x = 300 + 1500;
             block1.y = 500;
-            block1.label = "Give Me";
+            block1.label = "Give";
 
             block2.x = 450 + 1500;
             block2.y = 500;
             block2.label = "A";
 
-            block3.x = 450 + 1500;
+            block3.x = 600 + 1500;
             block3.y = 200;
             block3.label = "Way";
 
-            player.x = 1600;
+            block4.x = 250 + 1500;
+            block4.y = 100;
+            block4.label = "Me";
+
+            endGate.x = endGate.x + 1500;
+
+            player.x = player.x + 1500;
             nextLevel2 = false;
         }
 
         if (nextLevel3) {
-            staircases.add(new Staircase(650 + 1500, 150, 50, 50));
+            staircases.add(Config.startEndStair);
         }
 
         if (nextLevel3 && Config.isInStaircase) {
+            transition.startTransition();
             Config.isInStaircase = false;
 
-            block1.x = 150 + 3500;
-            block1.y = 300;
+            block1.x = 550 + 3500;
+            block1.y = 250;
             block1.label = "Uncover";
 
-            block2.x = 550 + 3500;
-            block2.y = 200;
+            block2.x = 200 + 3500;
+            block2.y = 350;
             block2.label = "This";
 
-            block3.x = 500 + 3500;
-            block3.y = 600;
-            block3.label = "Deepest Secret";
+            block3.x = 750 + 3500;
+            block3.y = 550;
+            block3.label = "Deepest";
+
+            block4.x = 500 + 3500;
+            block4.y = 600;
+            block4.label = "Secret";
 
             player.x = 3750;
             player.y = 300;
@@ -331,28 +435,105 @@ public class GameHandler extends JPanel implements Runnable {
         }
 
         if (nextLevel4) {
+            transition.startTransition();
             enemies.add(new Enemy(550 + 5500,700,32,32));
             enemies.add(new Enemy(300 + 5500,650,32,32));
 
-            block1.x = 600 + 5500;
-            block1.y = 500;
+            crack_1.x = 5650;
+            crack_1.y = 300;
+
+            crack_2.x = 5700;
+            crack_2.y = 300;
+
+            crack_3.x = 5750;
+            crack_3.y = 350;
+
+            crack_4.x = 5750;
+            crack_4.y = 400;
+
+            crack_5.x = 6200;
+            crack_5.y = 500;
+
+            crack_6.x = 6200;
+            crack_6.y = 550;
+
+            crack_7.x = 6200;
+            crack_7.y = 600;
+
+            crackWord_1.x = 5850;
+            crackWord_1.y = 250;
+
+            crackWord_2.x = 6050;
+            crackWord_2.y = 500;
+
+            crackWord_3.x = 5900;
+            crackWord_3.y = 650;
+
+            block1.x = 5700;
+            block1.y = 350;
             block1.label = "The";
 
-            block2.x = 300 + 5500;
-            block2.y = 600;
-            block2.label = "Final Way";
+            block2.x = 6100;
+            block2.y = 200;
+            block2.label = "Final";
 
-            block3.x = 150 + 5500;
-            block3.y = 250;
-            block3.label = "Open Up";
+            block3.x = 6100;
+            block3.y = 400;
+            block3.label = "Way";
 
-            player.x = 5750;
+            block4.x = 6250;
+            block4.y = 550;
+            block4.label = "Open";
+
+            block5.x = 5800;
+            block5.y = 600;
+            block5.label = "Up";
+
+            player.x = player.x + 5500;
             nextLevel4 = false;
+        }
+
+        if (nextLevel5) {
+            transition.startTransition();
+
+            block1.x = 7750;
+            block1.y = 350;
+            block1.label = "The";
+
+            block2.x = 8050;
+            block2.y = 500;
+            block2.label = "Key";
+
+            block3.x = 7800;
+            block3.y = 600;
+            block3.label = "Is";
+
+            block4.x = 8050;
+            block4.y = 200;
+            block4.label = "A";
+
+            block5.x = 8250;
+            block5.y = 550;
+            block5.label = "Secret";
+
+            player.x = player.x + 7500;
+            nextLevel5 = false;
+        }
+
+        if (Config.isInStaircase && Config.hasKey) {
+            transition.startTransition();
+            player.x = 2150;
+            player.y = 150;
         }
 
         g.setColor(Color.DARK_GRAY);
         for (Wall wall : walls) {
             g.fillRect(wall.x, wall.y, wall.width, wall.height);
+        }
+
+        g.setColor(Color.GREEN);
+        for (Gate gate : gates) {
+            g.fillRect(gate.x, gate.y, gate.width, gate.height);
         }
 
         g.setColor(Color.ORANGE);
@@ -378,6 +559,9 @@ public class GameHandler extends JPanel implements Runnable {
         player.draw(g);
         npc.draw(g);
 
+        g.setColor(Color.PINK);
+        g.fillRect(Config.gateKey.x, Config.gateKey.y, 50,50);
+
         g2d.translate(-camX, -camY);
 
         // Not putting this in a function cuz it aint that big
@@ -390,13 +574,15 @@ public class GameHandler extends JPanel implements Runnable {
 
         drawStaminaBar(g, player, WIDTH);
 
-        if (!canUseAbility) {
-            int remainingCooldown = (int) ((abilityCooldownEnd - currentTime) / 1000);
-            g.setColor(Color.RED);
-            g.drawString("Cooldown: " + remainingCooldown + "s", getWidth() - 150, 30);
-        } else {
-            g.setColor(Color.GREEN);
-            g.drawString("Ability Ready!", getWidth() - 150, 30);
+        if (Config.hasAbility) {
+            if (!canUseAbility) {
+                int remainingCooldown = (int) ((abilityCooldownEnd - currentTime) / 1000);
+                g.setColor(Color.RED);
+                g.drawString("Cooldown: " + remainingCooldown + "s", getWidth() - 150, 30);
+            } else {
+                g.setColor(Color.GREEN);
+                g.drawString("Ability Ready!", getWidth() - 150, 30);
+            }
         }
 
         if (!running) {
@@ -408,22 +594,35 @@ public class GameHandler extends JPanel implements Runnable {
         }
 
         if (!startGame) {
+//            g.setColor(Color.BLACK);
+//            g.fillRect(0,0,WIDTH,HEIGHT);
+//
+//            //not centered im centering it later
+//
+//            g.setColor(Color.RED);
+//            g.drawString("Horror Game", 300, 100);
+//            g.drawString("<Press Space to Start the game!>", 250, 200);
+
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(level1Image, 0, 0, WIDTH, HEIGHT, this);
+            g.drawImage(mainMenuImage, 0, 0, WIDTH, HEIGHT, this);
+        }
+
+        if (Config.endGame) {
+            Config.endGame = false;
             g.setColor(Color.BLACK);
             g.fillRect(0,0,WIDTH,HEIGHT);
-
-            //not centered im centering it later
-
             g.setColor(Color.RED);
-            g.drawString("Horror Game", 300, 100);
-            g.drawString("<Press Space to Start the game!>", 250, 200);
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("THE END...", getWidth() / 2 - 120, getHeight() / 2);
         }
 
-        if (endgame) {
-            endgame = false;
-            g.setColor(Color.GREEN);
-            g.setFont(new Font("Arial", Font.BOLD, 50));
-            g.drawString("YOU WIN", getWidth() / 2 - 120, getHeight() / 2);
+        if (transition.transitionActive) {
+            transition.render(g2d);
         }
+
+//        startButton.draw(g);
+//        exitButton.draw(g);
     }
 
     private void drawStaminaBar(Graphics g, Player player, int screenWidth) {
@@ -459,16 +658,20 @@ public class GameHandler extends JPanel implements Runnable {
         boolean foundNextLevel2 = false;
         boolean foundNextLevel3 = false;
         boolean foundNextLevel4 = false;
-        boolean foundEndGame = false;
+        boolean foundNextLevel5 = false;
 
         for (Block block : blocks) {
             Point pos = getGridPosition(block.x, block.y);
 
             Block right = blockMap.get(new Point(pos.x + 1, pos.y));
             Block right2 = blockMap.get(new Point(pos.x + 2, pos.y));
+            Block right3 = blockMap.get(new Point(pos.x + 3, pos.y));
+            Block right4 = blockMap.get(new Point(pos.x + 4, pos.y));
 
             Block down = blockMap.get(new Point(pos.x, pos.y + 1));
             Block down2 = blockMap.get(new Point(pos.x, pos.y + 2));
+            Block down3 = blockMap.get(new Point(pos.x, pos.y + 3));
+            Block down4 = blockMap.get(new Point(pos.x, pos.y + 4));
 
             if (right != null && right2 != null && isValidSJLI(block, right, right2)) {
                 block.color = Color.BLUE;
@@ -484,60 +687,78 @@ public class GameHandler extends JPanel implements Runnable {
                 foundCrackFix = true;
             }
 
-            if (right != null && right2 != null && isValidSSCA(block, right, right2)) {
+            if (right != null && right2 != null && right3 != null && isValidSSCA(block, right, right2, right3)) {
                 block.color = Color.BLUE;
                 right.color = Color.BLUE;
                 right2.color = Color.BLUE;
                 foundNextLevel2 = true;
             }
 
-            if (down != null && down2 != null && isValidSSCA(block, down, down2)) {
+            if (down != null && down2 != null && down3 != null && isValidSSCA(block, down, down2, down3)) {
                 block.color = Color.BLUE;
                 down.color = Color.BLUE;
                 down2.color = Color.BLUE;
                 foundNextLevel2 = true;
             }
 
-            if (right != null && right2 != null && isValidGMAW(block, right, right2)) {
+            if (right != null && right2 != null && right3 != null && isValidGMAW(block, right, right2, right3)) {
                 block.color = Color.BLUE;
                 right.color = Color.BLUE;
                 right2.color = Color.BLUE;
                 foundNextLevel3 = true;
             }
 
-            if (down != null && down2 != null && isValidGMAW(block, down, down2)) {
+            if (down != null && down2 != null && down3 != null && isValidGMAW(block, down, down2, down3)) {
                 block.color = Color.BLUE;
                 down.color = Color.BLUE;
                 down2.color = Color.BLUE;
                 foundNextLevel3 = true;
             }
 
-            if (right != null && right2 != null && isValidUTDS(block, right, right2)) {
+            if (right != null && right2 != null && right3 != null && isValidUTDS(block, right, right2, right3)) {
                 block.color = Color.BLUE;
                 right.color = Color.BLUE;
                 right2.color = Color.BLUE;
                 foundNextLevel4 = true;
             }
 
-            if (down != null && down2 != null && isValidUTDS(block, down, down2)) {
+            if (down != null && down2 != null && down3 != null && isValidUTDS(block, down, down2, down3)) {
                 block.color = Color.BLUE;
                 down.color = Color.BLUE;
                 down2.color = Color.BLUE;
                 foundNextLevel4 = true;
             }
 
-            if (right != null && right2 != null && isValidTFWOU(block, right, right2)) {
+            if (right != null && right2 != null && right3 != null && right4 != null && isValidTFWOU(block, right, right2, right3, right4)) {
                 block.color = Color.BLUE;
                 right.color = Color.BLUE;
                 right2.color = Color.BLUE;
-                foundEndGame = true;
+                foundNextLevel5 = true;
             }
 
-            if (down != null && down2 != null && isValidTFWOU(block, down, down2)) {
+            if (down != null && down2 != null && down3 != null && down4 != null && isValidTFWOU(block, down, down2, down3, down4)) {
                 block.color = Color.BLUE;
                 down.color = Color.BLUE;
                 down2.color = Color.BLUE;
-                foundEndGame = true;
+                foundNextLevel5 = true;
+            }
+
+            if (right != null && right2 != null && right3 != null && right4 != null && isValidTKIAS(block, right, right2, right3, right4)) {
+                block.y = 5000;
+                right.y = 2500;
+                right2.y = 6000;
+                right3.y = 7000;
+                right4.y = 8000;
+                Config.gateKey = new Key(8050, 500, 50,50);
+            }
+
+            if (down != null && down2 != null && down3 != null && down4 != null && isValidTKIAS(block, down, down2, down3, down4)) {
+                block.y = 5000;
+                down.y = 2500;
+                down2.y = 6000;
+                down3.y = 7000;
+                down4.y = 8000;
+                Config.gateKey = new Key(8050, 500, 50,50);
             }
         }
 
@@ -545,7 +766,7 @@ public class GameHandler extends JPanel implements Runnable {
         nextLevel2 = foundNextLevel2;
         nextLevel3 = foundNextLevel3;
         nextLevel4 = foundNextLevel4;
-        endgame = foundEndGame;
+        nextLevel5 = foundNextLevel5;
 
         if (foundCrackFix) {
             for (Crack crack : cracks) {
@@ -563,6 +784,7 @@ public class GameHandler extends JPanel implements Runnable {
             Point snappedPos = getGridPosition(block.x, block.y);
             blockMap.put(snappedPos, block);
         }
+
     }
 
     private Point getGridPosition(int x, int y) {
@@ -572,24 +794,39 @@ public class GameHandler extends JPanel implements Runnable {
         return new Point(gridX, gridY);
     }
 
-    private boolean isValidSSCA(Block a, Block b, Block c) {
-        List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("School Secrets") && words.contains("Come") && words.contains("Alive");
+    private boolean isValidSSCA(Block a, Block b, Block c, Block d) {
+        List<String> correctOrder = Arrays.asList("School", "Secrets", "Come", "Alive");
+        List<String> currentOrder = Arrays.asList(a.label, b.label, c.label, d.label);
+
+        return correctOrder.equals(currentOrder);
     }
 
-    private boolean isValidGMAW(Block a, Block b, Block c) {
-        List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("Give Me") && words.contains("A") && words.contains("Way");
+    private boolean isValidGMAW(Block a, Block b, Block c, Block d) {
+        List<String> correctOrder = Arrays.asList("Give", "Me", "A", "Way");
+        List<String> currentOrder = Arrays.asList(a.label, b.label, c.label, d.label);
+
+        return correctOrder.equals(currentOrder);
     }
 
-    private boolean isValidUTDS(Block a, Block b, Block c) {
-        List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("Uncover") && words.contains("This") && words.contains("Deepest Secret");
+    private boolean isValidUTDS(Block a, Block b, Block c, Block d) {
+        List<String> correctOrder = Arrays.asList("Uncover", "This", "Deepest", "Secret");
+        List<String> currentOrder = Arrays.asList(a.label, b.label, c.label, d.label);
+
+        return correctOrder.equals(currentOrder);
     }
 
-    private boolean isValidTFWOU(Block a, Block b, Block c) {
-        List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("The") && words.contains("Final Way") && words.contains("Open Up");
+    private boolean isValidTFWOU(Block a, Block b, Block c, Block d, Block e) {
+        List<String> correctOrder = Arrays.asList("The", "Final", "Way", "Open", "Up");
+        List<String> currentOrder = Arrays.asList(a.label, b.label, c.label, d.label, e.label);
+
+        return correctOrder.equals(currentOrder);
+    }
+
+    private boolean isValidTKIAS(Block a, Block b, Block c, Block d, Block e) {
+        List<String> correctOrder = Arrays.asList("The", "Key", "Is", "A", "Secret");
+        List<String> currentOrder = Arrays.asList(a.label, b.label, c.label, d.label, e.label);
+
+        return correctOrder.equals(currentOrder);
     }
 
     private boolean isValidSJLI(Block a, Block b, Block c) {
@@ -606,12 +843,13 @@ public class GameHandler extends JPanel implements Runnable {
 
             if (e.getKeyCode() == KeyEvent.VK_SPACE) {
                 if (!startGame) {
+                    transition.startTransition();
                     startGame = true;
                     startTime = System.currentTimeMillis();
                 }
             }
 
-            if (e.getKeyCode() == KeyEvent.VK_E && canUseAbility) {
+            if (e.getKeyCode() == KeyEvent.VK_E && canUseAbility && Config.hasAbility) {
                 for (Enemy enemy : enemies) {
                     long currentTime = System.currentTimeMillis();
                     enemy.speed = 0; // Freeze enemy
@@ -630,6 +868,27 @@ public class GameHandler extends JPanel implements Runnable {
         }
     }
 
+    private class MouseHandler extends MouseAdapter {
+        @Override
+        public void mousePressed(MouseEvent e) {
+            int mouseX = e.getX();
+            int mouseY = e.getY();
+
+            // Check if button is clicked
+            if (startButton.isClicked(mouseX, mouseY)) {
+                if (!startGame) {
+                    transition.startTransition();
+                    startGame = true;
+                    startTime = System.currentTimeMillis();
+                }
+            }
+
+            if (exitButton.isClicked(mouseX, mouseY)) {
+                System.exit(0);
+            }
+        }
+    }
+
     public static void main(String[] args) {
         JFrame frame = new JFrame("Project C");
         GameHandler panel = new GameHandler();
@@ -644,7 +903,7 @@ public class GameHandler extends JPanel implements Runnable {
 
 class Grid {
     public static void drawGrid(Graphics g, int width, int height) {
-        width += 6200;
+        width += 9200;
         height += 400;
 
         g.setColor(Color.LIGHT_GRAY);
@@ -666,8 +925,8 @@ class Player {
 
     private double speed = 0;
     private double acceleration = 0.5;
-    private double maxSpeed = 3;
-    private double sprintSpeed = 5;
+    public double maxSpeed = 6;
+    public double sprintSpeed = maxSpeed + 1;
     private double deceleration = 0.4;
 
     private boolean up, down, left, right, sprinting;
@@ -701,7 +960,7 @@ class Player {
         }
     }
 
-    public void update(ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases) {
+    public void update(ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases, ArrayList<Gate> gates) {
         double targetSpeed = sprinting && stamina > 0 ? sprintSpeed : maxSpeed;
 
         if (sprinting && stamina > 0) {
@@ -732,8 +991,8 @@ class Player {
             if (right) newX += speed;
         }
 
-        if (!collides(newX, y, walls, blocks, cracks, staircases)) x = newX;
-        if (!collides(x, newY, walls, blocks, cracks, staircases)) y = newY;
+        if (!collides(newX, y, walls, blocks, cracks, staircases, gates)) x = newX;
+        if (!collides(x, newY, walls, blocks, cracks, staircases, gates)) y = newY;
 
         // Final check: Is the player actually moving?
         if (speed > 0) moving = true;
@@ -757,11 +1016,11 @@ class Player {
 
     }
 
-    private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases) {
+    private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases, ArrayList<Gate> gates) {
         for (Wall wall : walls) {
             if (newX < wall.x + wall.width && newX + size > wall.x &&
                     newY < wall.y + wall.height && newY + size > wall.y) {
-                return true;
+                return false;
             }
         }
 
@@ -786,6 +1045,27 @@ class Player {
                 return true;
             }
         }
+
+        for (Gate gate : gates) {
+            if ((newX < gate.x + gate.width && newX + size > gate.x &&
+                    newY < gate.y + gate.height && newY + size > gate.y) && !Config.hasKey) {
+                return true;
+            } else if (((newX < gate.x + gate.width && newX + size > gate.x &&
+                    newY < gate.y + gate.height && newY + size > gate.y) && Config.hasKey)) {
+                Config.endGame = true;
+                return false;
+            }
+        }
+
+        if (Config.gateKey != null && (newX < Config.gateKey.x + Config.gateKey.width && newX + size > Config.gateKey.x &&
+                newY < Config.gateKey.y + Config.gateKey.height && newY + size > Config.gateKey.y)) {
+            Config.gateKey.x = 10000;
+            Config.hasKey = true;
+            Config.startEndStair.x = 7650;
+            Config.startEndStair.y = 200;
+            return false;
+        }
+
         return false;
     }
 }
@@ -794,7 +1074,7 @@ class NPC {
     private int x, y, size = 40;
     private boolean playerNearby = false;
     public boolean inDialogue = false;
-    public String dialogue = "Hello there! Welcome to the adventure.";
+    public String dialogue = "Hello student, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...";
     private Player player;
 
     public NPC(int x, int y) {
@@ -826,8 +1106,8 @@ class NPC {
 
         // Draw "!" above NPC if player is nearby
         if (playerNearby && !inDialogue) {
-            g.setColor(Color.WHITE);
-            g.fillRect(x + size / 3, y - 20, size / 3, size / 3);
+            g.setColor(Color.YELLOW);
+            g.drawString("!",x + size / 3, y - 20);
         }
 
         // Draw dialogue box if in dialogue
@@ -855,6 +1135,10 @@ class NPC {
             for (String line : lines) {
                 g.drawString(line, textX, textY);
                 textY += fm.getHeight();
+            }
+
+            if (!Config.hasAbility) {
+                Config.hasAbility = true;
             }
         }
     }
@@ -1083,7 +1367,7 @@ class Block {
         }
 
         for (Crack crack : cracks) {
-            if (newX < crack.x + crack.width && newX + width > crack.x && newY < crack.y + crack.height && newY + height > crack.y) {
+            if (newX < crack.x + crack.width && newX + width > crack.x && newY < crack.y + crack.height && newY + height > crack.y && !crack.isFixed) {
                 return;
             }
         }
@@ -1150,5 +1434,134 @@ class Staircase {
         this.y = y;
         this.width = width;
         this.height = height;
+    }
+}
+
+class Gate {
+    int x, y, width, height;
+    public Gate(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+}
+
+class Key {
+    int x, y, width, height;
+    public Key(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+}
+
+class ScreenTransition {
+    private float alpha = 0.0f;  // Transparency (0 = no effect, 1 = full black)
+    private boolean fadingOut = true;  // Start with fade-out
+    public boolean transitionActive = false;  // Is the transition running?
+    private int transitionStep = 0;  // Controls each phase of transition
+
+    public void startTransition() {
+        transitionActive = true;
+        fadingOut = true;
+        alpha = 0.0f;
+        transitionStep = 0;
+    }
+
+    public void update() {
+        if (!transitionActive) return;  // If not active, do nothing
+
+        if (fadingOut) {
+            alpha += 0.05f;  // Increase alpha (fade to black)
+            if (alpha >= 1.0f) {
+                alpha = 1.0f;
+                transitionStep++;
+                if (transitionStep > 20) {  // Short black screen pause
+                    fadingOut = false;  // Switch to fade-in
+                }
+            }
+        } else {
+            alpha -= 0.05f;  // Decrease alpha (fade back to normal)
+            if (alpha <= 0.0f) {
+                alpha = 0.0f;
+                transitionActive = false;  // Transition complete
+            }
+        }
+    }
+
+    public void render(Graphics2D g) {
+        if (!transitionActive) return;  // If not active, do nothing
+
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, 800, 600);  // Adjust to screen size
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));  // Reset transparency
+    }
+}
+
+class Buttons {
+    int x, y, width, height;
+    Color color;
+    String label;
+
+    public Buttons(int x, int y, int width, int height, Color color, String label) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+        this.label = label;
+    }
+
+    public void draw(Graphics g) {
+        g.setColor(color);
+        g.fillRect(x, y, width, height);
+
+        // Draw Label
+        g.setColor(Color.BLACK);
+        g.drawString(label, x + width / 4, y + height / 2);
+    }
+
+    public boolean isClicked(int mouseX, int mouseY) {
+        return (mouseX >= x && mouseX <= x + width &&
+                mouseY >= y && mouseY <= y + height);
+    }
+}
+
+class SoundPlayer {
+    private Clip clip;
+
+    // Constructor: Load the sound file when creating a SoundPlayer object
+    public SoundPlayer(String filePath) {
+        try {
+            File soundFile = new File(filePath);
+            if (!soundFile.exists()) {
+                System.out.println("Sound file not found: " + filePath);
+                return;
+            }
+
+            AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+            clip = AudioSystem.getClip();
+            clip.open(audioIn);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to play the sound
+    public void play() {
+        if (clip != null) {
+            clip.setFramePosition(0); // Rewind to start
+            clip.start();
+        }
+    }
+
+    // Method to stop the sound
+    public void stop() {
+        if (clip != null && clip.isRunning()) {
+            clip.stop();
+        }
     }
 }
