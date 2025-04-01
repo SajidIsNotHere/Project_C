@@ -29,7 +29,7 @@ public class GameHandler extends JPanel implements Runnable {
     private ArrayList<Gate> gates;
     private ArrayList<Enemy> enemies;
     private long startTime;
-    private final int TIME_LIMIT = 100000;
+    private final int TIME_LIMIT = 8 * 60;
     private boolean showGrid = false;
     private Image level1Image;
     private Image level2Image;
@@ -38,6 +38,14 @@ public class GameHandler extends JPanel implements Runnable {
     private Image level5Image;
     private Image jumpscareImage;
     private Image mainMenuImage;
+
+    private Image titleImage;
+    private Image crackImage;
+    private Image keyImage;
+    private Image gateImage;
+    private Image staircaseImage;
+
+
 
     private boolean startGame = false;
     private boolean nextLevel2 = false;
@@ -92,6 +100,12 @@ public class GameHandler extends JPanel implements Runnable {
         level3Image = new ImageIcon(getClass().getResource("/game/images/level_3.png")).getImage();
         level4Image = new ImageIcon(getClass().getResource("/game/images/level_4.png")).getImage();
         level5Image = new ImageIcon(getClass().getResource("/game/images/level_5.png")).getImage();
+
+        titleImage = new ImageIcon(getClass().getResource("/game/images/title.png")).getImage();
+        crackImage = new ImageIcon(getClass().getResource("/game/images/crack.png")).getImage();
+        keyImage = new ImageIcon(getClass().getResource("/game/images/key.png")).getImage();
+        gateImage = new ImageIcon(getClass().getResource("/game/images/gate.png")).getImage();
+        staircaseImage = new ImageIcon(getClass().getResource("/game/images/staircase.png")).getImage();
 
         player = new Player(900, 900);
         //enemy = new Enemy(100,100,32,32);
@@ -377,9 +391,9 @@ public class GameHandler extends JPanel implements Runnable {
         g.drawImage(level4Image, 5500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
         g.drawImage(level5Image, 7500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
 
-        if (showGrid) {
-           Grid.drawGrid(g, WIDTH, HEIGHT);
-        }
+//        if (showGrid) {
+//           Grid.drawGrid(g, WIDTH, HEIGHT);
+//        }
 
         if (nextLevel2) {
             transition.startTransition();
@@ -526,14 +540,14 @@ public class GameHandler extends JPanel implements Runnable {
             player.y = 150;
         }
 
-        g.setColor(Color.DARK_GRAY);
-        for (Wall wall : walls) {
-            g.fillRect(wall.x, wall.y, wall.width, wall.height);
-        }
+//        g.setColor(Color.DARK_GRAY);
+//        for (Wall wall : walls) {
+//            g.fillRect(wall.x, wall.y, wall.width, wall.height);
+//        }
 
         g.setColor(Color.GREEN);
         for (Gate gate : gates) {
-            g.fillRect(gate.x, gate.y, gate.width, gate.height);
+            g.drawImage(gateImage, gate.x, gate.y, gate.width, gate.height, this);
         }
 
         g.setColor(Color.ORANGE);
@@ -543,12 +557,12 @@ public class GameHandler extends JPanel implements Runnable {
 
         g.setColor(Color.LIGHT_GRAY);
         for (Crack crack : cracks) {
-            crack.draw(g);
+            crack.draw(g, crackImage);
         }
 
         g.setColor(Color.PINK);
         for (Staircase staircase : staircases) {
-            g.fillRect(staircase.x, staircase.y, staircase.width, staircase.height);
+            g.drawImage(staircaseImage, staircase.x, staircase.y, staircase.width, staircase.height, this);
         }
 
         for (Enemy enemy : enemies) {
@@ -559,8 +573,9 @@ public class GameHandler extends JPanel implements Runnable {
         player.draw(g);
         npc.draw(g);
 
-        g.setColor(Color.PINK);
-        g.fillRect(Config.gateKey.x, Config.gateKey.y, 50,50);
+        if (Config.gateKey != null) {
+            g.drawImage(keyImage, Config.gateKey.x, Config.gateKey.y, 50,50, this);
+        }
 
         g2d.translate(-camX, -camY);
 
@@ -921,11 +936,13 @@ class Grid {
 
 
 class Player {
-    int x, y, size = 40;
+    int x, y;
+    int sizeX = 80;
+    int sizeY = 100;
 
     private double speed = 0;
     private double acceleration = 0.5;
-    public double maxSpeed = 6;
+    public double maxSpeed = 5;
     public double sprintSpeed = maxSpeed + 1;
     private double deceleration = 0.4;
 
@@ -940,7 +957,16 @@ class Player {
     private int animationIndex = 0;
     private int animationTimer = 0;
     private int animationSpeed = 10;
-    private Color[] animationFrames = {Color.BLUE, Color.GREEN, Color.YELLOW, Color.RED}; // 4 frames
+    private Image[] animationFrames = {
+            new ImageIcon(getClass().getResource("/game/images/player/walk1g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk2g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk3g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk4g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk5g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk6g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk7g.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/player/walk8g.png")).getImage()
+    }; // 8 frames
 
     public Player(int x, int y) {
         this.x = x;
@@ -998,67 +1024,65 @@ class Player {
         if (speed > 0) moving = true;
 
         // Animation Logic
-//        if (moving) {
-//            animationTimer++;
-//            int sprintFactor = sprinting ? 2 : 1; // Sprinting speeds up animation
-//            if (animationTimer >= animationSpeed / sprintFactor) {
-//                animationIndex = (animationIndex + 1) % animationFrames.length;
-//                animationTimer = 0;
-//            }
-//        } else {
-//            animationIndex = 0; // Reset animation when not moving
-//        }
+        if (moving) {
+            animationTimer++;
+            int sprintFactor = sprinting ? 2 : 1; // Sprinting speeds up animation
+            if (animationTimer >= animationSpeed / sprintFactor) {
+                animationIndex = (animationIndex + 1) % animationFrames.length;
+                animationTimer = 0;
+            }
+        } else {
+            animationIndex = 0; // Reset animation when not moving
+        }
     }
 
     public void draw(Graphics g) {
-        g.setColor(animationFrames[animationIndex]);
-        g.fillOval(x, y, size, size);
-
+        g.drawImage( (animationFrames[animationIndex]), x, y, sizeX, sizeY, null);
     }
 
     private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases, ArrayList<Gate> gates) {
         for (Wall wall : walls) {
-            if (newX < wall.x + wall.width && newX + size > wall.x &&
-                    newY < wall.y + wall.height && newY + size > wall.y) {
-                return false;
+            if (newX < wall.x + wall.width && newX + sizeX > wall.x &&
+                    newY < wall.y + wall.height && newY + sizeY > wall.y) {
+                return true;
             }
         }
 
         for (Crack crack : cracks) {
-            if ((newX < crack.x + crack.width && newX + size > crack.x &&
-                    newY < crack.y + crack.height && newY + size > crack.y) && !crack.isFixed) {
+            if ((newX < crack.x + crack.width && newX + sizeX > crack.x &&
+                    newY < crack.y + crack.height && newY + sizeY > crack.y) && !crack.isFixed) {
                 return true;
             }
         }
 
         for (Staircase staircase : staircases) {
-            if (newX < staircase.x + staircase.width && newX + size > staircase.x &&
-                    newY < staircase.y + staircase.height && newY + size > staircase.y) {
+            if (newX < staircase.x + staircase.width && newX + sizeX > staircase.x &&
+                    newY < staircase.y + staircase.height && newY + sizeY > staircase.y) {
                 Config.isInStaircase = true;
                 return false;
             }
         }
 
         for (Block block : blocks) {
-            if (block.collides(newX, newY, size)) {
+            if (block.collides(newX, newY, sizeX, sizeY)) {
                 block.push(newX - x, newY - y, walls, blocks, cracks);
                 return true;
             }
         }
 
         for (Gate gate : gates) {
-            if ((newX < gate.x + gate.width && newX + size > gate.x &&
-                    newY < gate.y + gate.height && newY + size > gate.y) && !Config.hasKey) {
+            if ((newX < gate.x + gate.width && newX + sizeX > gate.x &&
+                    newY < gate.y + gate.height && newY + sizeY > gate.y) && !Config.hasKey) {
                 return true;
-            } else if (((newX < gate.x + gate.width && newX + size > gate.x &&
-                    newY < gate.y + gate.height && newY + size > gate.y) && Config.hasKey)) {
+            } else if (((newX < gate.x + gate.width && newX + sizeX > gate.x &&
+                    newY < gate.y + gate.height && newY + sizeY > gate.y) && Config.hasKey)) {
                 Config.endGame = true;
                 return false;
             }
         }
 
-        if (Config.gateKey != null && (newX < Config.gateKey.x + Config.gateKey.width && newX + size > Config.gateKey.x &&
-                newY < Config.gateKey.y + Config.gateKey.height && newY + size > Config.gateKey.y)) {
+        if (Config.gateKey != null && (newX < Config.gateKey.x + Config.gateKey.width && newX + sizeX > Config.gateKey.x &&
+                newY < Config.gateKey.y + Config.gateKey.height && newY + sizeY > Config.gateKey.y)) {
             Config.gateKey.x = 10000;
             Config.hasKey = true;
             Config.startEndStair.x = 7650;
@@ -1208,8 +1232,8 @@ class Enemy {
 
 
     private boolean collidesWithPlayer(Player player) {
-        return x < player.x + player.size && x + width > player.x &&
-                y < player.y + player.size && y + height > player.y;
+        return x < player.x + player.sizeX && x + width > player.x &&
+                y < player.y + player.sizeY && y + height > player.y;
     }
 
 
@@ -1352,8 +1376,8 @@ class Block {
         this.label = label;
     }
 
-    public boolean collides(int newX, int newY, int size) {
-        return newX < x + width && newX + size > x && newY < y + height && newY + size > y;
+    public boolean collides(int newX, int newY, int sizeX, int sizeY) {
+        return newX < x + width && newX + sizeX > x && newY < y + height && newY + sizeY > y;
     }
 
     public void push(int dx, int dy, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks) {
@@ -1373,7 +1397,7 @@ class Block {
         }
 
         for (Block block : blocks) {
-            if (block != this && block.collides(newX, newY, width)) {
+            if (block != this && block.collides(newX, newY, width, height)) {
                 block.push(dx, dy, walls, blocks, cracks);
                 return;
             }
@@ -1417,9 +1441,9 @@ class Crack {
         return isFixed;
     }
 
-    public void draw(Graphics g) {
+    public void draw(Graphics g, Image crackImage) {
         g.setColor(isFixed ? Color.LIGHT_GRAY : Color.DARK_GRAY);
-        g.fillRect(x, y, width, height);
+        g.drawImage(crackImage, x, y, width, height, null);
     }
 
     public Rectangle getBounds() {
