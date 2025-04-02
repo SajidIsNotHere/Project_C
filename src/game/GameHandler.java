@@ -6,6 +6,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,13 +40,14 @@ public class GameHandler extends JPanel implements Runnable {
     private Image jumpscareImage;
     private Image mainMenuImage;
 
+    private Image npcImage;
     private Image titleImage;
     private Image crackImage;
     private Image keyImage;
     private Image gateImage;
     private Image staircaseImage;
 
-
+    private FullScreenBlinkingLight blinkingLight;
 
     private boolean startGame = false;
     private boolean nextLevel2 = false;
@@ -67,11 +69,11 @@ public class GameHandler extends JPanel implements Runnable {
     Block block2 = new Block(250,500,50,50,"Secrets");
     Block block3 = new Block(600,200,50,50,"Come");
     Block block4 = new Block(150,150,50,50,"Alive");
-    Block block5 = new Block(0, 2000,50,50,"None");
+    Block block5 = new Block(0, 2000,50,50,"Alive");
 
-    Block crackWord_1 = new Block(250 + 3500,250,50,50,"Crack");
-    Block crackWord_2 = new Block(500 + 3500,500,50,50,"Is");
-    Block crackWord_3 = new Block(300 + 3500, 650,50,50,"Fix");
+    Block crackWord_1 = new Block(250 + 3500,250,50,50,"Fix");
+    Block crackWord_2 = new Block(500 + 3500,500,50,50,"The");
+    Block crackWord_3 = new Block(300 + 3500, 650,50,50,"Way");
 
     Gate endGate = new Gate(700, 850, 200, 150);
 
@@ -87,11 +89,14 @@ public class GameHandler extends JPanel implements Runnable {
     // next week for more organized workspace
 
     public GameHandler() {
+        setDoubleBuffered(true);
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         requestFocus();
         addKeyListener(new KeyHandler());
         addMouseListener(new MouseHandler());
+
+        blinkingLight = new FullScreenBlinkingLight();
 
         mainMenuImage = new ImageIcon(getClass().getResource("/game/images/main_menu.png")).getImage();
         jumpscareImage = new ImageIcon(getClass().getResource("/game/images/jumpscare.png")).getImage();
@@ -101,13 +106,14 @@ public class GameHandler extends JPanel implements Runnable {
         level4Image = new ImageIcon(getClass().getResource("/game/images/level_4.png")).getImage();
         level5Image = new ImageIcon(getClass().getResource("/game/images/level_5.png")).getImage();
 
+        npcImage = new ImageIcon(getClass().getResource("/game/images/npc.png")).getImage();
         titleImage = new ImageIcon(getClass().getResource("/game/images/title.png")).getImage();
         crackImage = new ImageIcon(getClass().getResource("/game/images/crack.png")).getImage();
         keyImage = new ImageIcon(getClass().getResource("/game/images/key.png")).getImage();
         gateImage = new ImageIcon(getClass().getResource("/game/images/gate.png")).getImage();
         staircaseImage = new ImageIcon(getClass().getResource("/game/images/staircase.png")).getImage();
 
-        player = new Player(900, 900);
+        player = new Player(450, 850);
         //enemy = new Enemy(100,100,32,32);
         walls = new ArrayList<>();
         blocks = new ArrayList<>();
@@ -328,6 +334,7 @@ public class GameHandler extends JPanel implements Runnable {
         player.update(walls, blocks, cracks, staircases, gates);
         npc.update(player);
         transition.update();
+        blinkingLight.update();
         for (Enemy enemy : enemies) {
             enemy.update(player, walls);
         }
@@ -571,11 +578,13 @@ public class GameHandler extends JPanel implements Runnable {
         }
 
         player.draw(g);
-        npc.draw(g);
+        npc.draw(g, npcImage);
 
         if (Config.gateKey != null) {
             g.drawImage(keyImage, Config.gateKey.x, Config.gateKey.y, 50,50, this);
         }
+
+        blinkingLight.draw(g, player.x, player.y);
 
         g2d.translate(-camX, -camY);
 
@@ -846,7 +855,7 @@ public class GameHandler extends JPanel implements Runnable {
 
     private boolean isValidSJLI(Block a, Block b, Block c) {
         List<String> words = Arrays.asList(a.label, b.label, c.label);
-        return words.contains("Crack") && words.contains("Is") && words.contains("Fix");
+        return words.contains("Fix") && words.contains("The") && words.contains("Way");
     }
 
     private class KeyHandler extends KeyAdapter {
@@ -937,8 +946,8 @@ class Grid {
 
 class Player {
     int x, y;
-    int sizeX = 80;
-    int sizeY = 100;
+    int sizeX = 40;
+    int sizeY = 60;
 
     private double speed = 0;
     private double acceleration = 0.5;
@@ -947,6 +956,8 @@ class Player {
     private double deceleration = 0.4;
 
     private boolean up, down, left, right, sprinting;
+
+    private boolean rightOrLeft = false;
 
     public double stamina = 100;
     public double maxStamina = 100;
@@ -976,8 +987,16 @@ class Player {
     public void setKey(int key, boolean pressed, NPC npc) {
         if (key == KeyEvent.VK_W) up = pressed;
         if (key == KeyEvent.VK_S) down = pressed;
-        if (key == KeyEvent.VK_A) left = pressed;
-        if (key == KeyEvent.VK_D) right = pressed;
+
+        if (key == KeyEvent.VK_A) {
+            left = pressed;
+            if (pressed) rightOrLeft = false; // A was last pressed
+        }
+        if (key == KeyEvent.VK_D) {
+            right = pressed;
+            if (pressed) rightOrLeft = true; // D was last pressed
+        }
+
         if (key == KeyEvent.VK_SHIFT) sprinting = pressed;
 
         if (pressed) {
@@ -1037,7 +1056,11 @@ class Player {
     }
 
     public void draw(Graphics g) {
-        g.drawImage( (animationFrames[animationIndex]), x, y, sizeX, sizeY, null);
+        if (!rightOrLeft) {
+            g.drawImage( (animationFrames[animationIndex]), x - 25, y + sizeY - 90, sizeX + 40, sizeY + 40, null);
+        } else {
+            g.drawImage( (animationFrames[animationIndex]), (x - 25) + (sizeY + 40), y + sizeY - 90, -(sizeX + 40), sizeY + 40, null);
+        }
     }
 
     private boolean collides(int newX, int newY, ArrayList<Wall> walls, ArrayList<Block> blocks, ArrayList<Crack> cracks, ArrayList<Staircase> staircases, ArrayList<Gate> gates) {
@@ -1095,10 +1118,10 @@ class Player {
 }
 
 class NPC {
-    private int x, y, size = 40;
+    private int x, y, size = 100;
     private boolean playerNearby = false;
     public boolean inDialogue = false;
-    public String dialogue = "Hello student, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...";
+    public String dialogue = "Hello Zelda, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...";
     private Player player;
 
     public NPC(int x, int y) {
@@ -1123,15 +1146,15 @@ class NPC {
         inDialogue = false;
     }
 
-    public void draw(Graphics g) {
+    public void draw(Graphics g, Image npcImage) {
         // Draw NPC
-        g.setColor(Color.YELLOW);
-        g.fillRect(x, y, size, size);
+        g.drawImage(npcImage, x, y, size, size, null);
 
         // Draw "!" above NPC if player is nearby
         if (playerNearby && !inDialogue) {
             g.setColor(Color.YELLOW);
             g.drawString("!",x + size / 3, y - 20);
+            g.drawString("Press F to Interact!",x + size / 3, y - 50);
         }
 
         // Draw dialogue box if in dialogue
@@ -1408,16 +1431,29 @@ class Block {
     }
 
     public void draw(Graphics g, int x, int y, int width, int height) {
-        g.setColor(color); // Use dynamic color
-        g.fillRect(x, y, width, height);
-        g.setColor(Color.BLACK);
-        g.setFont(font);
+        Image blockImage;
 
-        FontMetrics metrics = g.getFontMetrics(font);
-        int textX = x + (width - metrics.stringWidth(label)) / 2;
-        int textY = y + ((height - metrics.getHeight()) / 2) + metrics.getAscent();
+        URL blockURL = getClass().getResource("/game/images/words/"+ label +".png");
 
-        g.drawString(label, textX, textY);
+        if (blockURL != null) {
+            blockImage = new ImageIcon(blockURL).getImage();
+
+            g.drawImage(blockImage, x, y, width, height, null);
+        } else {
+            System.err.println("Warning: "+ label +".png not found!");
+
+              g.setColor(color); // Use dynamic color
+              g.fillRect(x, y, width, height);
+              g.setColor(Color.BLACK);
+              g.setFont(font);
+
+          FontMetrics metrics = g.getFontMetrics(font);
+           int textX = x + (width - metrics.stringWidth(label)) / 2;
+           int textY = y + ((height - metrics.getHeight()) / 2) + metrics.getAscent();
+
+            g.drawString(label, textX, textY);
+        }
+
     }
 }
 
@@ -1589,3 +1625,49 @@ class SoundPlayer {
         }
     }
 }
+
+class FullScreenBlinkingLight {
+    private boolean lightOn = true;  // Whether the screen-wide light is on or off
+    private long lastBlinkTime = 0;  // Last time the light blinked
+    private long blinkInterval;  // Interval for blinking (randomized)
+    private final long MIN_BLINK_INTERVAL = 500;  // Minimum blink interval in milliseconds
+    private final long MAX_BLINK_INTERVAL = 1500;  // Maximum blink interval in milliseconds
+    private Random rand = new Random();
+
+    // Constructor
+    public FullScreenBlinkingLight() {
+        // Set a random blink interval between min and max
+        this.blinkInterval = rand.nextInt((int) (MAX_BLINK_INTERVAL - MIN_BLINK_INTERVAL)) + (int) MIN_BLINK_INTERVAL;
+    }
+
+    // Update the blinking state based on time
+    public void update() {
+        long currentTime = System.currentTimeMillis();
+
+        // Check if enough time has passed to toggle the light state
+        if (currentTime - lastBlinkTime > blinkInterval) {
+            lightOn = !lightOn;  // Toggle the light's state (on/off)
+            lastBlinkTime = currentTime;  // Update the last blink time
+
+            // Randomize the blink interval for unpredictability
+            blinkInterval = rand.nextInt((int) (MAX_BLINK_INTERVAL - MIN_BLINK_INTERVAL)) + (int) MIN_BLINK_INTERVAL;
+        }
+    }
+
+    // Draw the full-screen blinking effect
+    public void draw(Graphics g, int x, int y) {
+        int camX = 800 / 2 - x;
+        int camY = 600 / 2 - y;
+
+        if (lightOn) {
+            // Draw a bright overlay (light on)
+            g.setColor(new Color(0, 0, 0, 200));  // Semi-transparent white overlay
+            g.fillRect(-camX, -camY, g.getClipBounds().width + 5000, g.getClipBounds().height + 5000);
+        } else {
+            // Optionally, you can draw a dimmed or transparent overlay (light off)
+            g.setColor(new Color(0, 0, 0, 100));  // Fully transparent overlay
+            g.fillRect(-camX - 5000, -camY - 5000, g.getClipBounds().width + 5000, g.getClipBounds().height + 5000);
+        }
+    }
+}
+
