@@ -40,6 +40,7 @@ public class GameHandler extends JPanel implements Runnable {
     private Image jumpscareImage;
     private Image mainMenuImage;
 
+    private Image crossImage;
     private Image npcImage;
     private Image titleImage;
     private Image crackImage;
@@ -106,6 +107,7 @@ public class GameHandler extends JPanel implements Runnable {
         level4Image = new ImageIcon(getClass().getResource("/game/images/level_4.png")).getImage();
         level5Image = new ImageIcon(getClass().getResource("/game/images/level_5.png")).getImage();
 
+        crossImage = new ImageIcon(getClass().getResource("/game/images/cross.png")).getImage();
         npcImage = new ImageIcon(getClass().getResource("/game/images/npc.png")).getImage();
         titleImage = new ImageIcon(getClass().getResource("/game/images/title.png")).getImage();
         crackImage = new ImageIcon(getClass().getResource("/game/images/crack.png")).getImage();
@@ -115,13 +117,13 @@ public class GameHandler extends JPanel implements Runnable {
 
         player = new Player(450, 850);
         //enemy = new Enemy(100,100,32,32);
+        //enemies.add(new Enemy(100,100,32,32));
         walls = new ArrayList<>();
         blocks = new ArrayList<>();
         cracks = new ArrayList<>();
         staircases = new ArrayList<>();
         gates = new ArrayList<>();
         enemies = new ArrayList<>();
-
         //backgroundMusic.play();
 
 
@@ -569,7 +571,7 @@ public class GameHandler extends JPanel implements Runnable {
 
         g.setColor(Color.PINK);
         for (Staircase staircase : staircases) {
-            g.drawImage(staircaseImage, staircase.x, staircase.y, staircase.width, staircase.height, this);
+            g.drawImage(staircaseImage, staircase.x - 25, staircase.y - 25, staircase.width + 50, staircase.height + 50, this);
         }
 
         for (Enemy enemy : enemies) {
@@ -577,7 +579,7 @@ public class GameHandler extends JPanel implements Runnable {
             enemy.draw(g);
         }
 
-        player.draw(g);
+        player.draw(g, crossImage, keyImage);
         npc.draw(g, npcImage);
 
         if (Config.gateKey != null) {
@@ -630,6 +632,7 @@ public class GameHandler extends JPanel implements Runnable {
             g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
             g.drawImage(level1Image, 0, 0, WIDTH, HEIGHT, this);
             g.drawImage(mainMenuImage, 0, 0, WIDTH, HEIGHT, this);
+            g.drawImage(titleImage, 300, -50, 200, 400, this);
         }
 
         if (Config.endGame) {
@@ -647,6 +650,10 @@ public class GameHandler extends JPanel implements Runnable {
 
 //        startButton.draw(g);
 //        exitButton.draw(g);
+
+        if (showGrid) {
+            Grid.drawGrid(g, WIDTH, HEIGHT);
+        }
     }
 
     private void drawStaminaBar(Graphics g, Player player, int screenWidth) {
@@ -1055,11 +1062,19 @@ class Player {
         }
     }
 
-    public void draw(Graphics g) {
+    public void draw(Graphics g, Image crossImage, Image keyImage) {
         if (!rightOrLeft) {
             g.drawImage( (animationFrames[animationIndex]), x - 25, y + sizeY - 90, sizeX + 40, sizeY + 40, null);
         } else {
             g.drawImage( (animationFrames[animationIndex]), (x - 25) + (sizeY + 40), y + sizeY - 90, -(sizeX + 40), sizeY + 40, null);
+        }
+
+        if (Config.hasAbility) {
+            g.drawImage(crossImage, x - 25, y - 25, 40,40,null);
+        }
+
+        if (Config.hasKey) {
+            g.drawImage(keyImage, x + 25, y - 25, 40,40,null);
         }
     }
 
@@ -1221,6 +1236,17 @@ class Enemy {
     int speed = 2;
     private ArrayList<Point> path = new ArrayList<>();
 
+    private boolean moving = false;
+
+    private int animationIndex = 0;
+    private int animationTimer = 0;
+    private int animationSpeed = 10;
+    private Image[] animationFrames = {
+            new ImageIcon(getClass().getResource("/game/images/enemy/enemy.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/enemy/walk1m1.png")).getImage(),
+            new ImageIcon(getClass().getResource("/game/images/enemy/walk2m1.png")).getImage()
+    }; // 3 frames
+
     public Enemy(int x, int y, int width, int height) {
         this.x = x;
         this.y = y;
@@ -1246,10 +1272,24 @@ class Enemy {
                 path.remove(0);
             }
 
-            if (collidesWithPlayer(player)) {
-                System.out.println("Game Over! Enemy caught the player.");
-                GameHandler.running = false;
+            // Final check: Is the enemy actually moving?
+            if (speed > 0) moving = true;
+
+            // Animation Logic
+            if (moving) {
+                animationTimer++;
+                if (animationTimer >= animationSpeed) {
+                    animationIndex = (animationIndex + 1) % animationFrames.length;
+                    animationTimer = 0;
+                }
+            } else {
+                animationIndex = 0; // Reset animation when not moving
             }
+        }
+
+        if (collidesWithPlayer(player)) {
+            System.out.println("Game Over! Enemy caught the player.");
+            GameHandler.running = false;
         }
     }
 
@@ -1264,6 +1304,8 @@ class Enemy {
     public void draw(Graphics g) {
         g.setColor(Color.RED);
         g.fillOval(x, y, width, height);
+
+        g.drawImage( (animationFrames[animationIndex]), x - 25, y + height - 90, width + 60, height + 60, null);
 
         // Debug: Draw path
 //        g.setColor(Color.YELLOW);
@@ -1440,8 +1482,6 @@ class Block {
 
             g.drawImage(blockImage, x, y, width, height, null);
         } else {
-            System.err.println("Warning: "+ label +".png not found!");
-
               g.setColor(color); // Use dynamic color
               g.fillRect(x, y, width, height);
               g.setColor(Color.BLACK);
