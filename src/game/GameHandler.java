@@ -40,6 +40,10 @@ public class GameHandler extends JPanel implements Runnable {
     private Image jumpscareImage;
     private Image mainMenuImage;
 
+    private Image controlImage;
+    private Image mechanicImage;
+    private Image storyImage;
+
     private Image crossImage;
     private Image npcImage;
     private Image titleImage;
@@ -49,6 +53,8 @@ public class GameHandler extends JPanel implements Runnable {
     private Image staircaseImage;
 
     private FullScreenBlinkingLight blinkingLight;
+
+    private int startStep = 0;
 
     private boolean startGame = false;
     private boolean nextLevel2 = false;
@@ -62,6 +68,7 @@ public class GameHandler extends JPanel implements Runnable {
 
     ScreenTransition transition = new ScreenTransition();
     SoundPlayer backgroundMusic = new SoundPlayer("src/game/music/bg.wav");
+    SoundPlayer guideAudio = new SoundPlayer("src/game/music/first.wav");
 
     Buttons startButton = new Buttons(300, 250, 200, 100, Color.GREEN, "Start");
     Buttons exitButton = new Buttons(300,500,200,100, Color.RED, "Exit");
@@ -107,6 +114,10 @@ public class GameHandler extends JPanel implements Runnable {
         level4Image = new ImageIcon(getClass().getResource("/game/images/level_4.png")).getImage();
         level5Image = new ImageIcon(getClass().getResource("/game/images/level_5.png")).getImage();
 
+        controlImage = new ImageIcon(getClass().getResource("/game/images/controls.png")).getImage();
+        storyImage = new ImageIcon(getClass().getResource("/game/images/story.png")).getImage();
+        mechanicImage = new ImageIcon(getClass().getResource("/game/images/mechanics.png")).getImage();
+
         crossImage = new ImageIcon(getClass().getResource("/game/images/cross.png")).getImage();
         npcImage = new ImageIcon(getClass().getResource("/game/images/npc.png")).getImage();
         titleImage = new ImageIcon(getClass().getResource("/game/images/title.png")).getImage();
@@ -124,8 +135,7 @@ public class GameHandler extends JPanel implements Runnable {
         staircases = new ArrayList<>();
         gates = new ArrayList<>();
         enemies = new ArrayList<>();
-        //backgroundMusic.play();
-
+        backgroundMusic.play();
 
         // LONG AHH CODE gotta optimize prob next week
         // yeah for now its like this
@@ -333,6 +343,7 @@ public class GameHandler extends JPanel implements Runnable {
     }
 
     private void update() {
+        System.out.println(startStep);
         player.update(walls, blocks, cracks, staircases, gates);
         npc.update(player);
         transition.update();
@@ -400,9 +411,9 @@ public class GameHandler extends JPanel implements Runnable {
         g.drawImage(level4Image, 5500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
         g.drawImage(level5Image, 7500, 0, gridSize * gridWidth, gridSize * gridHeight, this);
 
-//        if (showGrid) {
-//           Grid.drawGrid(g, WIDTH, HEIGHT);
-//        }
+        if (showGrid) {
+           Grid.drawGrid(g, WIDTH, HEIGHT);
+        }
 
         if (nextLevel2) {
             transition.startTransition();
@@ -459,6 +470,7 @@ public class GameHandler extends JPanel implements Runnable {
 
         if (nextLevel4) {
             transition.startTransition();
+            npc.interact("Form a word that makes you able to pass through the Stone Blocks that blocks your \"WAY\" :)", true);
             enemies.add(new Enemy(550 + 5500,700,32,32));
             enemies.add(new Enemy(300 + 5500,650,32,32));
 
@@ -512,7 +524,7 @@ public class GameHandler extends JPanel implements Runnable {
             block5.y = 600;
             block5.label = "Up";
 
-            player.x = player.x + 5500;
+            player.x = 5850;
             nextLevel4 = false;
         }
 
@@ -539,7 +551,7 @@ public class GameHandler extends JPanel implements Runnable {
             block5.y = 550;
             block5.label = "Secret";
 
-            player.x = player.x + 7500;
+            player.x = 7850;
             nextLevel5 = false;
         }
 
@@ -619,7 +631,7 @@ public class GameHandler extends JPanel implements Runnable {
             g.drawString("GAME OVER", getWidth() / 2 - 120, getHeight() / 2);
         }
 
-        if (!startGame) {
+        if (!startGame && startStep == 0) {
 //            g.setColor(Color.BLACK);
 //            g.fillRect(0,0,WIDTH,HEIGHT);
 //
@@ -635,6 +647,16 @@ public class GameHandler extends JPanel implements Runnable {
             g.drawImage(titleImage, 300, -50, 200, 400, this);
         }
 
+        if (!startGame && startStep == 1) {
+            g.setColor(Color.BLACK);
+            g.fillRect(0,0,WIDTH,HEIGHT);
+            g.drawImage(storyImage, 267, 0, 266, 600, this);
+            g.drawImage(controlImage, 0, 0, 266, 600, this);
+            g.drawImage(mechanicImage, 533, 0, 266, 600, this);
+            g.setColor(Color.yellow);
+            g.drawString("Press Space to Continue to the next", 0,50);
+        }
+
         if (Config.endGame) {
             Config.endGame = false;
             g.setColor(Color.BLACK);
@@ -647,13 +669,12 @@ public class GameHandler extends JPanel implements Runnable {
         if (transition.transitionActive) {
             transition.render(g2d);
         }
-
 //        startButton.draw(g);
 //        exitButton.draw(g);
 
-        if (showGrid) {
-            Grid.drawGrid(g, WIDTH, HEIGHT);
-        }
+//        if (showGrid) {
+//            Grid.drawGrid(g, WIDTH, HEIGHT);
+//        }
     }
 
     private void drawStaminaBar(Graphics g, Player player, int screenWidth) {
@@ -866,21 +887,38 @@ public class GameHandler extends JPanel implements Runnable {
     }
 
     private class KeyHandler extends KeyAdapter {
+
+        private boolean spacePressed = false; // Track SPACE key press
+
         @Override
         public void keyPressed(KeyEvent e) {
-            if (e.getKeyCode() == KeyEvent.VK_G) {
+            int keyCode = e.getKeyCode();
+
+            player.setKey(e.getKeyCode(), true, npc);
+
+            if (keyCode == KeyEvent.VK_G) {
                 showGrid = !showGrid;
             }
 
-            if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-                if (!startGame) {
-                    transition.startTransition();
+            if (keyCode == KeyEvent.VK_SPACE) {
+                if (!startGame && startStep == 0 && !spacePressed) {
+                    spacePressed = true;
+                    startStep += 1;
+                    guideAudio.play();
+                }
+                if (!startGame && startStep == 1 && !spacePressed) {
+                    spacePressed = true;
+                    startStep += 1;
+                    guideAudio.stop();
+                }
+                if (!startGame && startStep == 2 && !spacePressed) {
+                    spacePressed = true;
                     startGame = true;
-                    startTime = System.currentTimeMillis();
+                    guideAudio.stop();
                 }
             }
 
-            if (e.getKeyCode() == KeyEvent.VK_E && canUseAbility && Config.hasAbility) {
+            if (keyCode == KeyEvent.VK_E && canUseAbility && Config.hasAbility) {
                 for (Enemy enemy : enemies) {
                     long currentTime = System.currentTimeMillis();
                     enemy.speed = 0; // Freeze enemy
@@ -889,15 +927,19 @@ public class GameHandler extends JPanel implements Runnable {
                     canUseAbility = false; // Disable ability until cooldown ends
                 }
             }
-
-            player.setKey(e.getKeyCode(), true, npc);
         }
 
         @Override
         public void keyReleased(KeyEvent e) {
             player.setKey(e.getKeyCode(), false, npc);
+            int keyCode = e.getKeyCode();
+
+            // Reset flags when keys are released
+            if (keyCode == KeyEvent.VK_SPACE) spacePressed = false;
         }
     }
+
+    private boolean mouseClicked = false; // Prevents double-clicking
 
     private class MouseHandler extends MouseAdapter {
         @Override
@@ -906,17 +948,32 @@ public class GameHandler extends JPanel implements Runnable {
             int mouseY = e.getY();
 
             // Check if button is clicked
-            if (startButton.isClicked(mouseX, mouseY)) {
-                if (!startGame) {
-                    transition.startTransition();
+            if (startButton.isClicked(mouseX, mouseY) && !mouseClicked) {
+                if (!startGame && startStep == 0 && !mouseClicked) {
+                    mouseClicked = true;
+                    startStep += 1;
+                    guideAudio.play();
+                }
+                if (!startGame && startStep == 1 && !mouseClicked) {
+                    mouseClicked = true;
+                    startStep += 1;
+                    guideAudio.stop();
+                }
+                if (!startGame && startStep == 2 && !mouseClicked) {
+                    mouseClicked = true;
                     startGame = true;
-                    startTime = System.currentTimeMillis();
+                    guideAudio.stop();
                 }
             }
 
             if (exitButton.isClicked(mouseX, mouseY)) {
                 System.exit(0);
             }
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            mouseClicked = false;
         }
     }
 
@@ -1007,7 +1064,7 @@ class Player {
         if (key == KeyEvent.VK_SHIFT) sprinting = pressed;
 
         if (pressed) {
-            if (key == KeyEvent.VK_F) npc.interact();
+            if (key == KeyEvent.VK_F) npc.interact("Hello Zelda, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...", true);
             if (key == KeyEvent.VK_SPACE && npc.isInDialogue()) npc.exitDialogue();
         }
     }
@@ -1138,6 +1195,7 @@ class NPC {
     public boolean inDialogue = false;
     public String dialogue = "Hello Zelda, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...";
     private Player player;
+    private boolean bypass;
 
     public NPC(int x, int y) {
         this.x = x;
@@ -1151,8 +1209,10 @@ class NPC {
         this.player = player;
     }
 
-    public void interact() {
-        if (playerNearby) {
+    public void interact(String message, boolean bypass) {
+        this.bypass = bypass;
+        if (playerNearby || bypass) {
+            dialogue = message;
             inDialogue = true;
         }
     }
@@ -1186,10 +1246,18 @@ class NPC {
             int boxHeight = 30 + (lines.size() * fm.getHeight());
 
             // Draw dialogue box
-            g.setColor(Color.BLACK);
-            g.fillRect(x, y, boxWidth, boxHeight);
-            g.setColor(Color.WHITE);
-            g.drawRect(x, y, boxWidth, boxHeight);
+
+            if (!playerNearby) {
+                g.setColor(Color.BLACK);
+                g.fillRect(x, y, boxWidth, boxHeight);
+                g.setColor(Color.WHITE);
+                g.drawRect(x, y, boxWidth, boxHeight);
+            } else {
+                g.setColor(Color.BLACK);
+                g.fillRect(x, y, boxWidth, boxHeight);
+                g.setColor(Color.WHITE);
+                g.drawRect(x, y, boxWidth, boxHeight);
+            }
 
             // Draw text inside the box
             int textX = x + 10;
@@ -1199,7 +1267,7 @@ class NPC {
                 textY += fm.getHeight();
             }
 
-            if (!Config.hasAbility) {
+            if (!Config.hasAbility && !bypass) {
                 Config.hasAbility = true;
             }
         }
