@@ -343,7 +343,6 @@ public class GameHandler extends JPanel implements Runnable {
     }
 
     private void update() {
-        System.out.println(startStep);
         player.update(walls, blocks, cracks, staircases, gates);
         npc.update(player);
         transition.update();
@@ -561,10 +560,10 @@ public class GameHandler extends JPanel implements Runnable {
             player.y = 150;
         }
 
-//        g.setColor(Color.DARK_GRAY);
-//        for (Wall wall : walls) {
-//            g.fillRect(wall.x, wall.y, wall.width, wall.height);
-//        }
+        g.setColor(Color.DARK_GRAY);
+        for (Wall wall : walls) {
+            g.fillRect(wall.x, wall.y, wall.width, wall.height);
+        }
 
         g.setColor(Color.GREEN);
         for (Gate gate : gates) {
@@ -889,6 +888,8 @@ public class GameHandler extends JPanel implements Runnable {
     private class KeyHandler extends KeyAdapter {
 
         private boolean spacePressed = false; // Track SPACE key press
+        private boolean kPressed = false;
+        private boolean alignVertical = false;
 
         @Override
         public void keyPressed(KeyEvent e) {
@@ -898,6 +899,29 @@ public class GameHandler extends JPanel implements Runnable {
 
             if (keyCode == KeyEvent.VK_G) {
                 showGrid = !showGrid;
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_L) {
+                alignVertical = !alignVertical; // Toggle state
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_K && !kPressed) {
+                int gridSize = 50; // Assuming walls are placed on a grid
+                int wallX, wallY;
+
+                kPressed = true;
+
+                if (alignVertical) {
+                    wallX = player.x; // Keep X where the player is
+                    wallY = Math.round(player.y / (float) gridSize) * gridSize; // Snap Y to grid
+                    walls.add(new Wall(wallX, wallY, 15, 50));
+                    System.out.println("walls.add(new Wall(" + wallX + ", " + wallY + ", 15, 50));");
+                } else {
+                    wallX = Math.round(player.x / (float) gridSize) * gridSize; // Snap X to grid
+                    wallY = player.y; // Keep Y where the player is
+                    walls.add(new Wall(wallX, wallY, 50, 15));
+                    System.out.println("walls.add(new Wall(" + wallX + ", " + wallY + ", 50, 15));");
+                }
             }
 
             if (keyCode == KeyEvent.VK_SPACE) {
@@ -936,6 +960,7 @@ public class GameHandler extends JPanel implements Runnable {
 
             // Reset flags when keys are released
             if (keyCode == KeyEvent.VK_SPACE) spacePressed = false;
+            if (keyCode == KeyEvent.VK_K) kPressed = false;
         }
     }
 
@@ -1064,7 +1089,7 @@ class Player {
         if (key == KeyEvent.VK_SHIFT) sprinting = pressed;
 
         if (pressed) {
-            if (key == KeyEvent.VK_F) npc.interact("Hello Zelda, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...", true);
+            if (key == KeyEvent.VK_F) npc.interact("Hello Zelda, I am giving you this cross. This cross will scare the evil away. Be careful the evil always finds its way to hunt you down...", false);
             if (key == KeyEvent.VK_SPACE && npc.isInDialogue()) npc.exitDialogue();
         }
     }
@@ -1120,6 +1145,8 @@ class Player {
     }
 
     public void draw(Graphics g, Image crossImage, Image keyImage) {
+        g.setColor(Color.BLUE);
+        g.fillRect(x,y,40,40);
         if (!rightOrLeft) {
             g.drawImage( (animationFrames[animationIndex]), x - 25, y + sizeY - 90, sizeX + 40, sizeY + 40, null);
         } else {
@@ -1139,7 +1166,7 @@ class Player {
         for (Wall wall : walls) {
             if (newX < wall.x + wall.width && newX + sizeX > wall.x &&
                     newY < wall.y + wall.height && newY + sizeY > wall.y) {
-                return true;
+                return false;
             }
         }
 
