@@ -55,6 +55,7 @@ public class GameHandler extends JPanel implements Runnable {
     private FullScreenBlinkingLight blinkingLight;
 
     private int startStep = 0;
+    private int currentLevel = 1;
 
     private boolean startGame = false;
     private boolean nextLevel2 = false;
@@ -144,7 +145,7 @@ public class GameHandler extends JPanel implements Runnable {
 
         // Level 1
 
-        int gridSize = 50;
+        int gridSize = 15;
         int gridWidth = (WIDTH + 200) / gridSize;
         int gridHeight = (HEIGHT + 400) / gridSize;
 
@@ -158,25 +159,25 @@ public class GameHandler extends JPanel implements Runnable {
             walls.add(new Wall((gridWidth - 1) * gridSize, y, gridSize, gridSize)); // Right wall
         }
 
-        walls.add(new Wall(1500, 0, 1050,50));
-        walls.add(new Wall(1500, 50, 50,950));
-        walls.add(new Wall(1500, 950, 1050,50));
-        walls.add(new Wall(2500, 50, 50,950));
+        walls.add(new Wall(1500, 0, 1050,15));
+        walls.add(new Wall(1500, 50, 15,950));
+        walls.add(new Wall(1500, 950, 1050,15));
+        walls.add(new Wall(2500, 50, 15,950));
 
-        walls.add(new Wall(3500, 0, 1050,50));
-        walls.add(new Wall(3500, 50, 50,950));
-        walls.add(new Wall(3500, 950, 1050,50));
-        walls.add(new Wall(4500, 50, 50,950));
+        walls.add(new Wall(3500, 0, 1050,15));
+        walls.add(new Wall(3500, 50, 15,950));
+        walls.add(new Wall(3500, 950, 1050,15));
+        walls.add(new Wall(4500, 50, 15,950));
 
-        walls.add(new Wall(5500, 0, 1050,50));
-        walls.add(new Wall(5500, 50, 50,950));
-        walls.add(new Wall(5500, 950, 1050,50));
-        walls.add(new Wall(6500, 50, 50,950));
+        walls.add(new Wall(5500, 0, 1050,15));
+        walls.add(new Wall(5500, 50, 15,950));
+        walls.add(new Wall(5500, 950, 1050,15));
+        walls.add(new Wall(6500, 50, 15,950));
 
-        walls.add(new Wall(7500, 0, 1050,50));
-        walls.add(new Wall(7500, 50, 50,950));
-        walls.add(new Wall(7500, 950, 1050,50));
-        walls.add(new Wall(8500, 50, 50,950));
+        walls.add(new Wall(7500, 0, 1050,15));
+        walls.add(new Wall(7500, 50, 15,950));
+        walls.add(new Wall(7500, 950, 1050,15));
+        walls.add(new Wall(8500, 50, 15,950));
 
         walls.add(new Wall(551, 700, 15, 50));
         walls.add(new Wall(551, 650, 15, 50));
@@ -910,145 +911,12 @@ public class GameHandler extends JPanel implements Runnable {
            Grid.drawGrid(g, WIDTH, HEIGHT);
         }
 
-        if (nextLevel2) {
-            transition.startTransition();
-            block1.x = 300 + 1500;
-            block1.y = 500;
-            block1.label = "Give";
+        if (nextLevel2) goToNextLevel2();
+        if (nextLevel3) prepareNextLevel3();
+        if (nextLevel3 && Config.isInStaircase) goToNextLevel3();
+        if (nextLevel4) goToNextLevel4();
+        if (nextLevel5) goToNextLevel5();
 
-            block2.x = 450 + 1500;
-            block2.y = 500;
-            block2.label = "A";
-
-            block3.x = 600 + 1500;
-            block3.y = 200;
-            block3.label = "Way";
-
-            block4.x = 250 + 1500;
-            block4.y = 100;
-            block4.label = "Me";
-
-            endGate.x = endGate.x + 1500;
-
-            player.x = player.x + 1500;
-            nextLevel2 = false;
-        }
-
-        if (nextLevel3) {
-            staircases.add(Config.startEndStair);
-        }
-
-        if (nextLevel3 && Config.isInStaircase) {
-            transition.startTransition();
-            Config.isInStaircase = false;
-
-            block1.x = 550 + 3500;
-            block1.y = 250;
-            block1.label = "Uncover";
-
-            block2.x = 200 + 3500;
-            block2.y = 350;
-            block2.label = "This";
-
-            block3.x = 750 + 3500;
-            block3.y = 550;
-            block3.label = "Deepest";
-
-            block4.x = 500 + 3500;
-            block4.y = 600;
-            block4.label = "Secret";
-
-            player.x = 3750;
-            player.y = 300;
-            nextLevel3 = false;
-        }
-
-        if (nextLevel4) {
-            transition.startTransition();
-            npc.interact("Form a word that makes you able to pass through the Stone Blocks that blocks your \"WAY\" :)", true);
-            enemies.add(new Enemy(550 + 5500,700,32,32));
-            enemies.add(new Enemy(300 + 5500,650,32,32));
-
-            crack_1.x = 5650;
-            crack_1.y = 300;
-
-            crack_2.x = 5700;
-            crack_2.y = 300;
-
-            crack_3.x = 5750;
-            crack_3.y = 350;
-
-            crack_4.x = 5750;
-            crack_4.y = 400;
-
-            crack_5.x = 6200;
-            crack_5.y = 500;
-
-            crack_6.x = 6200;
-            crack_6.y = 550;
-
-            crack_7.x = 6200;
-            crack_7.y = 600;
-
-            crackWord_1.x = 5850;
-            crackWord_1.y = 250;
-
-            crackWord_2.x = 6050;
-            crackWord_2.y = 500;
-
-            crackWord_3.x = 5900;
-            crackWord_3.y = 650;
-
-            block1.x = 5700;
-            block1.y = 350;
-            block1.label = "The";
-
-            block2.x = 6100;
-            block2.y = 200;
-            block2.label = "Final";
-
-            block3.x = 6100;
-            block3.y = 400;
-            block3.label = "Way";
-
-            block4.x = 6250;
-            block4.y = 550;
-            block4.label = "Open";
-
-            block5.x = 5800;
-            block5.y = 600;
-            block5.label = "Up";
-
-            player.x = 5850;
-            nextLevel4 = false;
-        }
-
-        if (nextLevel5) {
-            transition.startTransition();
-
-            block1.x = 7750;
-            block1.y = 350;
-            block1.label = "The";
-
-            block2.x = 8050;
-            block2.y = 500;
-            block2.label = "Key";
-
-            block3.x = 7800;
-            block3.y = 600;
-            block3.label = "Is";
-
-            block4.x = 8050;
-            block4.y = 200;
-            block4.label = "A";
-
-            block5.x = 8250;
-            block5.y = 550;
-            block5.label = "Secret";
-
-            player.x = 7850;
-            nextLevel5 = false;
-        }
 
         if (Config.isInStaircase && Config.hasKey) {
             transition.startTransition();
@@ -1153,7 +1021,6 @@ public class GameHandler extends JPanel implements Runnable {
         }
 
         if (Config.endGame) {
-            Config.endGame = false;
             g.setColor(Color.BLACK);
             g.fillRect(0,0,WIDTH,HEIGHT);
             g.setColor(Color.RED);
@@ -1381,6 +1248,159 @@ public class GameHandler extends JPanel implements Runnable {
         return words.contains("Fix") && words.contains("The") && words.contains("Way");
     }
 
+    private void goToLevel1() {
+        transition.startTransition();
+
+        block1.x = 750;
+        block1.y = 750;
+        block1.label = "School";
+
+        block2.x = 250;
+        block2.y = 500;
+        block2.label = "Secrets";
+
+        block3.x = 600;
+        block3.y = 200;
+        block3.label = "Come";
+
+        block4.x = 150;
+        block4.y = 150;
+        block4.label = "Alive";
+
+        player.x = 450;
+        player.y = 850;
+
+        currentLevel = 1;
+    }
+
+    private void goToNextLevel2() {
+        transition.startTransition();
+        block1.x = 300 + 1500;
+        block1.y = 500;
+        block1.label = "Give";
+
+        block2.x = 450 + 1500;
+        block2.y = 500;
+        block2.label = "A";
+
+        block3.x = 600 + 1500;
+        block3.y = 200;
+        block3.label = "Way";
+
+        block4.x = 250 + 1500;
+        block4.y = 100;
+        block4.label = "Me";
+
+        endGate.x = 2200;
+        player.x = 1950;
+        player.y = 850;
+
+        currentLevel = 2;
+        nextLevel2 = false;
+    }
+
+    private void prepareNextLevel3() {
+        staircases.add(Config.startEndStair);
+    }
+
+    private void goToNextLevel3() {
+        transition.startTransition();
+        Config.isInStaircase = false;
+
+        block1.x = 550 + 3500;
+        block1.y = 250;
+        block1.label = "Uncover";
+
+        block2.x = 200 + 3500;
+        block2.y = 350;
+        block2.label = "This";
+
+        block3.x = 750 + 3500;
+        block3.y = 550;
+        block3.label = "Deepest";
+
+        block4.x = 500 + 3500;
+        block4.y = 600;
+        block4.label = "Secret";
+
+        player.x = 3500;
+        player.y = 350;
+
+        currentLevel = 3;
+        nextLevel3 = false;
+    }
+
+    private void goToNextLevel4() {
+        transition.startTransition();
+        npc.interact("Form a word that makes you able to pass through the Stone Blocks that blocks your \"WAY\" :)", true);
+        enemies.add(new Enemy(550 + 5500, 700, 32, 32));
+        enemies.add(new Enemy(300 + 5500, 650, 32, 32));
+
+        crack_1.x = 5650; crack_1.y = 300;
+        crack_2.x = 5700; crack_2.y = 300;
+        crack_3.x = 5750; crack_3.y = 350;
+        crack_4.x = 5750; crack_4.y = 400;
+        crack_5.x = 6200; crack_5.y = 500;
+        crack_6.x = 6200; crack_6.y = 550;
+        crack_7.x = 6200; crack_7.y = 600;
+
+        crackWord_1.x = 5850; crackWord_1.y = 250;
+        crackWord_2.x = 6050; crackWord_2.y = 500;
+        crackWord_3.x = 5900; crackWord_3.y = 650;
+
+        block1.x = 5700; block1.y = 350; block1.label = "The";
+        block2.x = 6100; block2.y = 200; block2.label = "Final";
+        block3.x = 6100; block3.y = 400; block3.label = "Way";
+        block4.x = 6250; block4.y = 550; block4.label = "Open";
+        block5.x = 5800; block5.y = 600; block5.label = "Up";
+
+        player.x = 5700;
+        player.y = 350;
+
+        currentLevel = 4;
+        nextLevel4 = false;
+    }
+
+    private void goToNextLevel5() {
+        transition.startTransition();
+
+        block1.x = 7750; block1.y = 350; block1.label = "The";
+        block2.x = 8050; block2.y = 500; block2.label = "Key";
+        block3.x = 7800; block3.y = 600; block3.label = "Is";
+        block4.x = 8050; block4.y = 200; block4.label = "A";
+        block5.x = 8250; block5.y = 550; block5.label = "Secret";
+
+        player.x = 7700;
+        player.y = 350;
+
+        currentLevel = 5;
+        nextLevel5 = false;
+    }
+
+    private void refreshCurrentLevel() {
+        switch (currentLevel) {
+            case 1:
+                goToLevel1();
+                break;
+            case 2:
+                goToNextLevel2();
+                break;
+            case 3:
+                goToNextLevel3();
+                break;
+            case 4:
+                goToNextLevel4();
+                break;
+            case 5:
+                goToNextLevel5();
+                break;
+            default:
+                System.out.println("Unknown level: " + currentLevel);
+        }
+    }
+
+
+
     private class KeyHandler extends KeyAdapter {
 
         private boolean spacePressed = false; // Track SPACE key press
@@ -1393,9 +1413,9 @@ public class GameHandler extends JPanel implements Runnable {
 
             player.setKey(e.getKeyCode(), true, npc);
 
-//            if (keyCode == KeyEvent.VK_G) {
-//                showGrid = !showGrid;
-//            }
+            if (keyCode == KeyEvent.VK_G) {
+                showGrid = !showGrid;
+            }
 
             if (e.getKeyCode() == KeyEvent.VK_L) {
                 alignVertical = !alignVertical; // Toggle state
@@ -1418,6 +1438,10 @@ public class GameHandler extends JPanel implements Runnable {
                     walls.add(new Wall(wallX, wallY, 50, 15));
                     System.out.println("walls.add(new Wall(" + wallX + ", " + wallY + ", 50, 15));");
                 }
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_R) {
+                refreshCurrentLevel();
             }
 
             if (keyCode == KeyEvent.VK_SPACE) {
@@ -1641,10 +1665,12 @@ class Player {
     }
 
     public void draw(Graphics g, Image crossImage, Image keyImage) {
+        g.setColor(Color.BLUE);
+        g.fillRect(x,y,sizeX,sizeY);
         if (!rightOrLeft) {
             g.drawImage( (animationFrames[animationIndex]), x - 25, y + sizeY - 90, sizeX + 40, sizeY + 40, null);
         } else {
-            g.drawImage( (animationFrames[animationIndex]), (x - 25) + (sizeY + 40), y + sizeY - 90, -(sizeX + 40), sizeY + 40, null);
+            g.drawImage( (animationFrames[animationIndex]), (x - 35) + (sizeY + 40), y + sizeY - 90, -(sizeX + 40), sizeY + 40, null);
         }
 
         if (Config.hasAbility) {
